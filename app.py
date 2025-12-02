@@ -4,7 +4,7 @@ import threading
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import yt_dlp
-from moviepy import VideoFileClip
+from moviepy.editor import VideoFileClip
 from gtts import gTTS
 
 app = Flask(__name__)

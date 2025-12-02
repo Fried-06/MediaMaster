@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaMaster - Téléchargeur & Convertisseur Ultime</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="background-glow"></div>
+    
+    <nav class="navbar">
+        <div class="logo">
+            <i class="fa-solid fa-headphones"></i> <i class="fa-solid fa-circle-play"></i> MediaMaster
+        </div>
+        <div class="nav-links">
+            <button class="nav-btn active" data-tab="download">
+                <i class="fa-solid fa-download"></i> Télécharger
+            </button>
+            <button class="nav-btn" data-tab="convert">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Convertir
+            </button>
+            <div class="theme-selector-container">
+                <select id="theme-select" class="theme-select">
+                    <option value="cyber">Cyber Dark</option>
+                    <option value="white">Clean White</option>
+                    <option value="purple">Midnight Purple</option>
+                    <option value="green">Forest Green</option>
+                    <option value="sunset">Sunset Glow</option>
+                </select>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- Download Section -->
+        <section id="download-section" class="tab-content active">
+            <div class="hero-text">
+                <h1>Téléchargez sans limites</h1>
+                <p>Sauvegardez vos vidéos préférées de TikTok, Instagram, Facebook et Snapchat en haute qualité.</p>
+            </div>
+
+            <div class="card glass-panel">
+                <div class="input-group">
+                    <i class="fa-solid fa-link input-icon"></i>
+                    <input type="text" id="url-input" placeholder="Collez le lien de la vidéo ici...">
+                    <button id="clear-btn" class="icon-btn hidden" title="Effacer"><i class="fa-solid fa-times"></i></button>
+                    <button id="paste-btn" class="icon-btn" title="Coller"><i class="fa-regular fa-clipboard"></i></button>
+                </div>
+
+                <div class="options-grid">
+                    <div class="platform-selector">
+                        <span class="label">Plateforme détectée</span>
+                        <div class="platform-badge" id="platform-badge">
+                            <i class="fa-solid fa-globe"></i> Auto
+                        </div>
+                    </div>
+                    <div class="quality-selector">
+                        <span class="label">Qualité</span>
+                        <select id="quality-select">
+                            <option value="hd">HD (1080p)</option>
+                            <option value="sd">SD (720p)</option>
+                            <option value="480p">480p</option>
+                            <option value="360p">360p</option>
+                            <option value="240p">240p</option>
+                            <option value="audio">Audio (MP3)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="download-btn" class="action-btn">
+                    <span>Télécharger</span>
+                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                </button>
+
+                <div id="download-status" class="status-area hidden">
+                    <div class="loader"></div>
+                    <p>Traitement en cours...</p>
+                    <button id="cancel-btn" class="cancel-btn hidden">
+                        <i class="fa-solid fa-xmark"></i> Annuler
+                    </button>
+                </div>
+            </div>
+
+            <div class="supported-platforms">
+                <i class="fa-brands fa-tiktok" title="TikTok"></i>
+                <i class="fa-brands fa-instagram" title="Instagram"></i>
+                <i class="fa-brands fa-facebook" title="Facebook"></i>
+                <i class="fa-brands fa-snapchat" title="Snapchat"></i>
+            </div>
+        </section>
+
+        <!-- Convert Section -->
+        <section id="convert-section" class="tab-content">
+            <div class="hero-text">
+                <h1>Transformez vos médias</h1>
+                <p>Convertissez vidéos en audio ou texte en parole avec nos voix IA ultra-réalistes.</p>
+            </div>
+
+            <div class="card glass-panel">
+                <div class="convert-mode-switch">
+                    <button class="mode-btn active" data-mode="video-audio">Vidéo vers Audio</button>
+                    <button class="mode-btn" data-mode="text-audio">Texte vers Audio</button>
+                </div>
+
+                <!-- Video to Audio Mode -->
+                <div id="video-audio-mode" class="mode-content active">
+                    <div class="drop-zone" id="drop-zone">
+                        <i class="fa-solid fa-file-video"></i>
+                        <p>Glissez votre vidéo ici ou cliquez pour parcourir</p>
+                        <input type="file" id="file-input" accept="video/*" hidden>
+                    </div>
+                </div>
+
+                <!-- Text to Audio Mode -->
+                <div id="text-audio-mode" class="mode-content">
+                    <div class="text-input-area">
+                        <textarea id="text-input" placeholder="Entrez votre texte ici ou importez un PDF/Word..."></textarea>
+                        <div class="text-tools">
+                            <button class="tool-btn" id="doc-upload-btn" title="Importer fichier"><i class="fa-solid fa-file-import"></i></button>
+                            <input type="file" id="doc-input" accept=".txt,.md" hidden>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="options-grid">
+                    <div class="format-selector">
+                        <span class="label">Format de sortie</span>
+                        <select id="format-select">
+                            <option value="mp3">MP3</option>
+                            <option value="wav">WAV</option>
+                            <option value="aac">AAC</option>
+                        </select>
+                    </div>
+                    <div class="voice-selector">
+                        <span class="label">Voix (IA)</span>
+                        <select id="voice-select">
+                            <option value="marie">Marie (Femme, Douce)</option>
+                            <option value="thomas">Thomas (Homme, Grave)</option>
+                            <option value="robot">Cyber (Robotique)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="convert-btn" class="action-btn">
+                    <span>Convertir</span>
+                    <i class="fa-solid fa-wand-magic"></i>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div class="footer-section info">
+                <span class="created-by">Créé par</span>
+                <div class="profile-container">
+                    <img src="maphoto.png" class="profile-pic" alt="SAMBO Missimba Wilfried">
+                </div>
+                <div class="info-text">
+                    <h3>SAMBO Missimba Wilfried</h3>
+                    <p class="title">Étudiant en 2ème année à l'IAI-TOGO</p>
+                    <p class="skills">Développeur Python, ADA, Java | Prompt Engineer | Monteur Video</p>
+                </div>
+            </div>
+            
+            <div class="footer-section social">
+                <!-- COLLEZ LE LIEN DE VOTRE PROFIL INSTAGRAM ICI (remplacez #) -->
+                <a href="https://www.instagram.com/wi_l_a.h/" target="_blank" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                
+                <!-- COLLEZ LE LIEN DE VOTRE PROFIL LINKEDIN ICI (remplacez #) -->
+                <a href="https://www.linkedin.com/in/wilfried-sambo-874270350" target="_blank" title="LinkedIn"><i class="fa-brands fa-linkedin"></i></a>
+                
+                <!-- COLLEZ LE LIEN DE VOTRE PROFIL FACEBOOK ICI (remplacez #) -->
+                <a href="#" target="_blank" title="Facebook"><i class="fa-brands fa-facebook"></i></a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 MediaMaster. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    </footer>
+
+    <!-- Image Modal -->
+    <div id="image-modal" class="image-modal hidden">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="modal-img">
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

@@ -107,17 +107,17 @@ def download_worker(task_id, url, quality):
                 'preferredquality': '192',
             }]
         elif quality == 'hd':
-            # Best video + best audio merged
-            ydl_opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+            # Try best quality, fallback to single file best
+            ydl_opts['format'] = 'bestvideo+bestaudio/best'
         elif quality == '480p':
-            ydl_opts['format'] = 'bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best[height<=480]'
+            ydl_opts['format'] = 'bestvideo[height<=480]+bestaudio/best[height<=480]'
         elif quality == '360p':
-            ydl_opts['format'] = 'bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/best[height<=360][ext=mp4]/best[height<=360]'
+            ydl_opts['format'] = 'bestvideo[height<=360]+bestaudio/best[height<=360]'
         elif quality == '240p':
-            ydl_opts['format'] = 'bestvideo[height<=240][ext=mp4]+bestaudio[ext=m4a]/best[height<=240][ext=mp4]/best[height<=240]'
+            ydl_opts['format'] = 'bestvideo[height<=240]+bestaudio/best[height<=240]'
         else:
              # Default fallback
-            ydl_opts['format'] = 'best[ext=mp4]/best'
+            ydl_opts['format'] = 'best'
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)

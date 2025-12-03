@@ -79,7 +79,10 @@ def download_worker(task_id, url, quality):
         # Check for cookies file
         cookies_path = os.path.join(os.getcwd(), 'cookies.txt')
         if os.path.exists(cookies_path):
-            print(f"Found cookies.txt at {cookies_path}")
+            file_size = os.path.getsize(cookies_path)
+            print(f"Found cookies.txt at {cookies_path} (Size: {file_size} bytes)")
+            if file_size == 0:
+                print("WARNING: cookies.txt is EMPTY!")
         else:
             print(f"WARNING: cookies.txt NOT FOUND at {cookies_path}")
 
@@ -88,12 +91,7 @@ def download_worker(task_id, url, quality):
             'noplaylist': True,
             'source_address': '0.0.0.0',
             'cookiefile': cookies_path,  # Use absolute path
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-                'Sec-Fetch-Mode': 'navigate',
-            },
+            'verbose': True, # Enable verbose logging
             'progress_hooks': [progress_hook],
             'ffmpeg_location': os.path.dirname(ffmpeg_path) if os.path.exists(ffmpeg_path) else None,
             'merge_output_format': 'mp4',

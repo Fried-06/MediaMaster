@@ -91,6 +91,11 @@ def download_worker(task_id, url, quality):
             'noplaylist': True,
             'source_address': '0.0.0.0',
             'cookiefile': cookies_path,  # Use absolute path
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['ios'],
+                }
+            },
             'verbose': True, # Enable verbose logging
             'progress_hooks': [progress_hook],
             'ffmpeg_location': os.path.dirname(ffmpeg_path) if os.path.exists(ffmpeg_path) else None,

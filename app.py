@@ -126,38 +126,46 @@ def download_worker(task_id, url, quality):
              # Default fallback
             ydl_opts['format'] = 'best'
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            
-            if quality == 'audio':
-                filename = os.path.splitext(filename)[0] + '.mp3'
-            
-            # Rename to title
-            import re
-            def sanitize_filename(name):
-                return re.sub(r'[<>:"/\\|?*]', '', name)
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+        except yt_dlp.utils.DownloadError as e:
+            # If format not available or other error, try fallback to 'best'
+            print(f"Download failed with initial options: {e}. Retrying with format='best'...")
+            ydl_opts['format'] = 'best'
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
 
-            safe_title = sanitize_filename(info.get('title', 'video'))
-            ext = os.path.splitext(filename)[1]
-            new_filename = f"{safe_title}{ext}"
+        filename = ydl.prepare_filename(info)
+        
+        if quality == 'audio':
+            filename = os.path.splitext(filename)[0] + '.mp3'
+        
+        # Rename to title
+        import re
+        def sanitize_filename(name):
+            return re.sub(r'[<>:"/\\|?*]', '', name)
+
+        safe_title = sanitize_filename(info.get('title', 'video'))
+        ext = os.path.splitext(filename)[1]
+        new_filename = f"{safe_title}{ext}"
+        new_path = os.path.join(DOWNLOAD_FOLDER, new_filename)
+        
+        # Handle duplicates
+        counter = 1
+        while os.path.exists(new_path):
+            new_filename = f"{safe_title} ({counter}){ext}"
             new_path = os.path.join(DOWNLOAD_FOLDER, new_filename)
-            
-            # Handle duplicates
-            counter = 1
-            while os.path.exists(new_path):
-                new_filename = f"{safe_title} ({counter}){ext}"
-                new_path = os.path.join(DOWNLOAD_FOLDER, new_filename)
-                counter += 1
-            
-            os.rename(filename, new_path)
-            
-            downloads[task_id]['status'] = 'completed'
-            downloads[task_id]['result'] = {
-                'filename': new_filename,
-                'title': info.get('title', 'Unknown Title'),
-                'download_url': f'/files/{new_filename}'
-            }
+            counter += 1
+        
+        os.rename(filename, new_path)
+        
+        downloads[task_id]['status'] = 'completed'
+        downloads[task_id]['result'] = {
+            'filename': new_filename,
+            'title': info.get('title', 'Unknown Title'),
+            'download_url': f'/files/{new_filename}'
+        }
 
     except Exception as e:
         if str(e) == "Download cancelled by user":

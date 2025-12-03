@@ -88,13 +88,6 @@ def download_worker(task_id, url, quality):
             'noplaylist': True,
             'source_address': '0.0.0.0',
             'cookiefile': cookies_path,  # Use absolute path
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web'],
-                    'player_skip': ['webpage', 'configs', 'js'],
-                    'include_ssl_certificate': True
-                }
-            },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -113,8 +106,12 @@ def download_worker(task_id, url, quality):
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }]
+        elif quality == '4k':
+            ydl_opts['format'] = 'bestvideo[height<=2160]+bestaudio/best[height<=2160]'
+        elif quality == '2k':
+            ydl_opts['format'] = 'bestvideo[height<=1440]+bestaudio/best[height<=1440]'
         elif quality == 'hd':
-            # Try best quality, fallback to single file best
+            # Try best quality (usually 1080p if available, or higher), fallback to single file best
             ydl_opts['format'] = 'bestvideo+bestaudio/best'
         elif quality == '480p':
             ydl_opts['format'] = 'bestvideo[height<=480]+bestaudio/best[height<=480]'
@@ -122,6 +119,8 @@ def download_worker(task_id, url, quality):
             ydl_opts['format'] = 'bestvideo[height<=360]+bestaudio/best[height<=360]'
         elif quality == '240p':
             ydl_opts['format'] = 'bestvideo[height<=240]+bestaudio/best[height<=240]'
+        elif quality == '144p':
+            ydl_opts['format'] = 'bestvideo[height<=144]+bestaudio/best[height<=144]'
         else:
              # Default fallback
             ydl_opts['format'] = 'best'

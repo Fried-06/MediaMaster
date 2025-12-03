@@ -79,7 +79,8 @@ def download_worker(task_id, url, quality):
         ydl_opts = {
             'outtmpl': output_template,
             'noplaylist': True,
-            'source_address': '0.0.0.0',  # Force IPv4, helps with cloud IP blocking
+            'source_address': '0.0.0.0',
+            'cookiefile': 'cookies.txt',  # Use cookies to bypass bot detection
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'web'],

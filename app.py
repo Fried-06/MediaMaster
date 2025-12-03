@@ -76,11 +76,18 @@ def download_worker(task_id, url, quality):
             # Fallback to system ffmpeg if local not found
             ffmpeg_path = 'ffmpeg'
 
+        # Check for cookies file
+        cookies_path = os.path.join(os.getcwd(), 'cookies.txt')
+        if os.path.exists(cookies_path):
+            print(f"Found cookies.txt at {cookies_path}")
+        else:
+            print(f"WARNING: cookies.txt NOT FOUND at {cookies_path}")
+
         ydl_opts = {
             'outtmpl': output_template,
             'noplaylist': True,
             'source_address': '0.0.0.0',
-            'cookiefile': 'cookies.txt',  # Use cookies to bypass bot detection
+            'cookiefile': cookies_path,  # Use absolute path
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'web'],

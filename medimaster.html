@@ -157,6 +157,43 @@
                 </button>
             </div>
         </section>
+        </section>
+
+        <!-- Image Section -->
+        <section id="images-section" class="tab-content">
+            <div class="hero-text">
+                <h1>Convertisseur d'Images</h1>
+                <p>Changez le format de vos images en un clic (PNG, JPG, WEBP, AVIF, etc.).</p>
+            </div>
+
+            <div class="card glass-panel">
+                <div class="drop-zone" id="image-drop-zone">
+                    <i class="fa-solid fa-images"></i>
+                    <p>Glissez votre image ici ou cliquez pour parcourir</p>
+                    <input type="file" id="image-input" accept="image/*" hidden>
+                </div>
+
+                <div class="options-grid">
+                    <div class="format-selector" style="width: 100%;">
+                        <span class="label">Format de sortie</span>
+                        <select id="image-format-select">
+                            <option value="png">PNG (Transparence)</option>
+                            <option value="jpeg">JPEG (Photo)</option>
+                            <option value="webp">WEBP (Web Moderne)</option>
+                            <option value="avif">AVIF (Ultra Léger)</option>
+                            <option value="ico">ICO (Favicon)</option>
+                            <option value="bmp">BMP</option>
+                            <option value="tiff">TIFF</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="convert-image-btn" class="action-btn">
+                    <span>Convertir l'Image</span>
+                    <i class="fa-solid fa-wand-magic"></i>
+                </button>
+            </div>
+        </section>
     </main>
 
     <footer class="site-footer">

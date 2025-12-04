@@ -1,10 +1,24 @@
 import os
 import uuid
 import threading
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import yt_dlp
-from moviepy.editor import VideoFileClip
+from gtts import gTTS
+
+app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
+
+# Configuration
+DOWNLOAD_FOLDER = os.path.join(os.getcwd(), 'downloads')
+# Ensure download folder exists
+if not os.path.exists(DOWNLOAD_FOLDER):
+    os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+
+app.config['UPLOAD_FOLDER'] = DOWNLOAD_FOLDER
+
+@app.route('/')
+def index():
     return send_from_directory('.', 'medimaster.html')
 
 @app.route('/css/<path:path>')
@@ -201,6 +215,50 @@ def cancel_download(task_id):
         return jsonify({'message': 'Cancellation requested'})
     
     return jsonify({'message': 'Task already completed or failed'}), 400
+
+@app.route('/api/convert-image', methods=['POST'])
+def convert_image():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    
+    file = request.files['file']
+    target_format = request.form.get('format', 'png').lower()
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
+    try:
+        from PIL import Image
+        import io
+
+        # Open image
+        img = Image.open(file.stream)
+        
+        # Convert mode if necessary (e.g. RGBA to RGB for JPEG)
+        if target_format in ['jpeg', 'jpg', 'bmp'] and img.mode in ['RGBA', 'P']:
+            img = img.convert('RGB')
+        
+        # Save to buffer
+        output_buffer = io.BytesIO()
+        save_format = target_format
+        if target_format == 'jpg': save_format = 'jpeg'
+        
+        img.save(output_buffer, format=save_format.upper())
+        output_buffer.seek(0)
+        
+        # Generate filename
+        original_name = os.path.splitext(file.filename)[0]
+        new_filename = f"{original_name}.{target_format}"
+        
+        return send_file(
+            output_buffer,
+            mimetype=f'image/{target_format}',
+            as_attachment=True,
+            download_name=new_filename
+        )
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/convert-video', methods=['POST'])
 def convert_video():

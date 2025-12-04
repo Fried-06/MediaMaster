@@ -61,6 +61,9 @@
                         <div class="platform-badge" id="platform-badge">
                             <i class="fa-solid fa-globe"></i> Auto
                         </div>
+                        <div id="yt-warning" class="platform-badge warning hidden" style="background: rgba(255, 50, 50, 0.2); color: #ff5555; border: 1px solid #ff5555;">
+                            <i class="fa-solid fa-triangle-exclamation"></i> YouTube Indisponible
+                        </div>
                     </div>
                     <div class="quality-selector">
                         <span class="label">Qualité</span>
@@ -178,6 +181,7 @@
                         <span class="label">Format de sortie</span>
                         <select id="image-format-select">
                             <option value="png">PNG (Transparence)</option>
+                            <option value="jpg">JPG (Standard)</option>
                             <option value="jpeg">JPEG (Photo)</option>
                             <option value="webp">WEBP (Web Moderne)</option>
                             <option value="avif">AVIF (Ultra Léger)</option>
@@ -232,6 +236,20 @@
     <div id="image-modal" class="image-modal hidden">
         <span class="close-modal">&times;</span>
         <img class="modal-content" id="modal-img">
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="image-modal hidden">
+        <div class="success-content glass-panel" style="text-align: center; max-width: 400px; padding: 30px; border-radius: 20px; position: relative;">
+            <span class="close-modal" id="close-success">&times;</span>
+            <img src="success_meme.png" alt="Success Meme" style="width: 150px; margin-bottom: 20px; border-radius: 10px;">
+            <h2 style="color: var(--primary); margin-bottom: 15px;">Hahaha ! 😂</h2>
+            <p style="margin-bottom: 20px; font-size: 1.1rem;">Votre téléchargement a bien été terminé !<br>Pour achever la tâche, veuillez l'enregistrer.</p>
+            <a id="success-download-link" href="#" class="action-btn" download target="_blank" style="text-decoration: none; display: inline-flex;">
+                <span>Enregistrer le fichier</span>
+                <i class="fa-solid fa-download"></i>
+            </a>
+        </div>
     </div>
 
     <script src="js/script.js"></script>

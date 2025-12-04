@@ -126,6 +126,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const updatePlatformBadge = (url) => {
         const platform = detectPlatform(url);
         platformBadge.innerHTML = `<i class="${platform.icon}"></i> ${platform.name}`;
+        
+        const ytWarning = document.getElementById('yt-warning');
+        if (platform.name === 'YouTube') {
+            ytWarning.classList.remove('hidden');
+            downloadBtn.disabled = true;
+            downloadBtn.style.opacity = '0.5';
+            downloadBtn.title = "YouTube indisponible pour le moment";
+        } else {
+            if(ytWarning) ytWarning.classList.add('hidden');
+            downloadBtn.disabled = false;
+            downloadBtn.style.opacity = '1';
+            downloadBtn.title = "";
+        }
     };
 
     urlInput.addEventListener('input', (e) => {
@@ -290,13 +303,27 @@ document.addEventListener('DOMContentLoaded', () => {
                         progressText.innerText = `${Math.round(progress)}%`;
                     } else if (statusData.status === 'completed') {
                         resetDownloadState();
-                        downloadStatus.innerHTML = `<i class="fa-solid fa-check" style="color: var(--primary); font-size: 1.5rem;"></i><p>Terminé ! <a href="${statusData.result.download_url}" download target="_blank" style="color: var(--text-main); text-decoration: underline;">Enregistrer le fichier</a></p>`;
+                        // downloadStatus.innerHTML = ... (OLD)
+                        
+                        // Show Success Modal
+                        const successModal = document.getElementById('success-modal');
+                        const successLink = document.getElementById('success-download-link');
+                        const closeSuccess = document.getElementById('close-success');
+                        
+                        successLink.href = statusData.result.download_url;
+                        successModal.classList.remove('hidden');
+                        setTimeout(() => successModal.classList.add('active'), 10);
+                        
+                        closeSuccess.onclick = () => {
+                            successModal.classList.remove('active');
+                            setTimeout(() => successModal.classList.add('hidden'), 300);
+                        };
                         
                         // Send Notification
                         if ('Notification' in window && Notification.permission === 'granted') {
                             new Notification('MediaMaster', {
                                 body: 'Votre téléchargement est terminé !',
-                                icon: '/favicon.ico' // Optional: Add a path to an icon if available
+                                icon: '/favicon.ico'
                             });
                         }
                     } else if (statusData.status === 'cancelled') {

@@ -93,7 +93,7 @@ def download_worker(task_id, url, quality):
             'cookiefile': cookies_path,  # Use absolute path
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['ios'],
+                    'player_client': ['android_tv'],
                 }
             },
             'verbose': True, # Enable verbose logging

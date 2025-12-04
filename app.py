@@ -5,20 +5,6 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import yt_dlp
 from moviepy.editor import VideoFileClip
-from gtts import gTTS
-
-app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
-
-# Configuration
-DOWNLOAD_FOLDER = os.path.join(os.getcwd(), 'downloads')
-if not os.path.exists(DOWNLOAD_FOLDER):
-    os.makedirs(DOWNLOAD_FOLDER)
-
-app.config['UPLOAD_FOLDER'] = DOWNLOAD_FOLDER
-
-@app.route('/')
-def index():
     return send_from_directory('.', 'medimaster.html')
 
 @app.route('/css/<path:path>')

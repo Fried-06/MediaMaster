@@ -89,7 +89,7 @@ def download_worker(task_id, url, quality):
         ydl_opts = {
             'outtmpl': output_template,
             'noplaylist': True,
-            'source_address': '0.0.0.0',
+            # 'source_address': '0.0.0.0', # Removed to allow IPv6
             'cookiefile': cookies_path,  # Use absolute path
             'extractor_args': {
                 'youtube': {

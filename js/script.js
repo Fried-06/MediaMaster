@@ -476,4 +476,97 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- IMAGE CONVERTER LOGIC ---
+    const imageDropZone = document.getElementById('image-drop-zone');
+    const imageInput = document.getElementById('image-input');
+    const convertImageBtn = document.getElementById('convert-image-btn');
+    const imageFormatSelect = document.getElementById('image-format-select');
+
+    if (imageDropZone && imageInput) {
+        imageDropZone.addEventListener('click', () => imageInput.click());
+
+        imageDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            imageDropZone.style.borderColor = 'var(--primary)';
+        });
+
+        imageDropZone.addEventListener('dragleave', () => {
+            imageDropZone.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+        });
+
+        imageDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            imageDropZone.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+            if (e.dataTransfer.files.length) {
+                imageInput.files = e.dataTransfer.files;
+                updateImageDropZoneText(e.dataTransfer.files[0].name);
+            }
+        });
+
+        imageInput.addEventListener('change', () => {
+            if (imageInput.files.length) {
+                updateImageDropZoneText(imageInput.files[0].name);
+            }
+        });
+    }
+
+    function updateImageDropZoneText(filename) {
+        const p = imageDropZone.querySelector('p');
+        p.innerHTML = `<i class="fa-solid fa-check"></i> ${filename}`;
+    }
+
+    if (convertImageBtn) {
+        convertImageBtn.addEventListener('click', async () => {
+            if (!imageInput.files.length) {
+                alert('Veuillez sélectionner une image d\'abord.');
+                return;
+            }
+
+            const file = imageInput.files[0];
+            const format = imageFormatSelect.value;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('format', format);
+
+            convertImageBtn.disabled = true;
+            convertImageBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Conversion...';
+
+            try {
+                const response = await fetch('/api/convert-image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Erreur de conversion');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                
+                // Get filename
+                let filename = `converted.${format}`;
+                const contentDisposition = response.headers.get('Content-Disposition');
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                    if (filenameMatch) filename = filenameMatch[1];
+                }
+                
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                alert('Conversion réussie !');
+            } catch (error) {
+                console.error(error);
+                alert('Une erreur est survenue lors de la conversion.');
+            } finally {
+                convertImageBtn.disabled = false;
+                convertImageBtn.innerHTML = '<span>Convertir l\'Image</span><i class="fa-solid fa-wand-magic"></i>';
+            }
+        });
+    }
 });

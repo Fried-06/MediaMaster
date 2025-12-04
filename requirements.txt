@@ -4,4 +4,4 @@ yt-dlp>=2024.11.0
 moviepy==1.0.3
 gTTS==2.5.0
 gunicorn
-Pillow==21.2.0
+Pillow

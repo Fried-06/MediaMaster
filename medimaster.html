@@ -27,6 +27,9 @@
             <button class="nav-btn" data-tab="images">
                 <i class="fa-solid fa-image"></i> Images
             </button>
+            <button class="nav-btn" data-tab="tools">
+                <i class="fa-solid fa-toolbox"></i> Outils
+            </button>
             <div class="theme-selector-container">
                 <select id="theme-select" class="theme-select">
                     <option value="cyber">Cyber Dark</option>
@@ -197,6 +200,102 @@
                     <span>Convertir l'Image</span>
                     <i class="fa-solid fa-wand-magic"></i>
                 </button>
+            </div>
+        </section>
+
+        <!-- Tools Section -->
+        <section id="tools-section" class="tab-content">
+            <div class="hero-text">
+                <h1>Boîte à Outils</h1>
+                <p>Compressez vos vidéos, supprimez les fonds et watermarks de vos images.</p>
+            </div>
+
+            <div class="card glass-panel">
+                <!-- Tool Selection -->
+                <div class="convert-mode-switch">
+                    <button class="tool-mode-btn active" data-tool="compress">
+                        <i class="fa-solid fa-compress"></i> Compression Vidéo
+                    </button>
+                    <button class="tool-mode-btn" data-tool="removebg">
+                        <i class="fa-solid fa-eraser"></i> Supprimer Fond
+                    </button>
+                    <button class="tool-mode-btn" data-tool="removewm">
+                        <i class="fa-solid fa-droplet-slash"></i> Supprimer Watermark
+                    </button>
+                </div>
+
+                <!-- Video Compression -->
+                <div id="compress-tool" class="tool-content active">
+                    <div class="drop-zone" id="video-drop-zone">
+                        <i class="fa-solid fa-film"></i>
+                        <p>Glissez votre vidéo ici ou cliquez pour parcourir</p>
+                        <input type="file" id="video-input" accept="video/*" hidden>
+                    </div>
+                    <div class="options-grid">
+                        <div class="format-selector" style="width: 100%;">
+                            <span class="label">Niveau de compression</span>
+                            <select id="compression-level">
+                                <option value="low">Faible (petite taille, qualité réduite)</option>
+                                <option value="medium" selected>Moyenne (équilibrée)</option>
+                                <option value="high">Haute (grande taille, meilleure qualité)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="compress-btn" class="action-btn">
+                        <span>Compresser la Vidéo</span>
+                        <i class="fa-solid fa-compress"></i>
+                    </button>
+                    <div id="compress-status" class="status-area hidden"></div>
+                </div>
+
+                <!-- Background Removal -->
+                <div id="removebg-tool" class="tool-content">
+                    <div class="drop-zone" id="bg-drop-zone">
+                        <i class="fa-solid fa-user-slash"></i>
+                        <p>Glissez votre image ici pour supprimer le fond</p>
+                        <input type="file" id="bg-input" accept="image/*" hidden>
+                    </div>
+                    <button id="removebg-btn" class="action-btn">
+                        <span>Supprimer le Fond</span>
+                        <i class="fa-solid fa-eraser"></i>
+                    </button>
+                    <div id="removebg-status" class="status-area hidden"></div>
+                </div>
+
+                <!-- Watermark Removal -->
+                <div id="removewm-tool" class="tool-content">
+                    <div class="drop-zone" id="wm-drop-zone">
+                        <i class="fa-solid fa-droplet-slash"></i>
+                        <p>Glissez votre image avec un watermark</p>
+                        <input type="file" id="wm-input" accept="image/*" hidden>
+                    </div>
+                    <div class="options-grid" style="grid-template-columns: repeat(4, 1fr);">
+                        <div>
+                            <span class="label">Position X</span>
+                            <input type="number" id="wm-x" value="0" style="width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);">
+                        </div>
+                        <div>
+                            <span class="label">Position Y</span>
+                            <input type="number" id="wm-y" value="0" style="width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);">
+                        </div>
+                        <div>
+                            <span class="label">Largeur</span>
+                            <input type="number" id="wm-width" value="100" style="width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);">
+                        </div>
+                        <div>
+                            <span class="label">Hauteur</span>
+                            <input type="number" id="wm-height" value="50" style="width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);">
+                        </div>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">
+                        <i class="fa-solid fa-info-circle"></i> Indiquez la zone du watermark (en pixels depuis le coin supérieur gauche)
+                    </p>
+                    <button id="removewm-btn" class="action-btn">
+                        <span>Supprimer le Watermark</span>
+                        <i class="fa-solid fa-droplet-slash"></i>
+                    </button>
+                    <div id="removewm-status" class="status-area hidden"></div>
+                </div>
             </div>
         </section>
     </main>

@@ -596,4 +596,183 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- TOOLS SECTION LOGIC ---
+    
+    // Tool mode switching
+    const toolModeBtns = document.querySelectorAll('.tool-mode-btn');
+    const toolContents = document.querySelectorAll('.tool-content');
+
+    toolModeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            toolModeBtns.forEach(b => b.classList.remove('active'));
+            toolContents.forEach(c => c.classList.remove('active'));
+
+            btn.classList.add('active');
+            const toolId = btn.dataset.tool + '-tool';
+            const toolEl = document.getElementById(toolId);
+            if (toolEl) toolEl.classList.add('active');
+        });
+    });
+
+    // Helper function for file drop zones
+    const setupDropZone = (dropZoneId, inputId) => {
+        const dropZone = document.getElementById(dropZoneId);
+        const input = document.getElementById(inputId);
+        
+        if (!dropZone || !input) return;
+
+        dropZone.addEventListener('click', () => input.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--primary)';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+            if (e.dataTransfer.files.length) {
+                input.files = e.dataTransfer.files;
+                const p = dropZone.querySelector('p');
+                p.innerHTML = `<i class="fa-solid fa-check"></i> ${e.dataTransfer.files[0].name}`;
+            }
+        });
+
+        input.addEventListener('change', () => {
+            if (input.files.length) {
+                const p = dropZone.querySelector('p');
+                p.innerHTML = `<i class="fa-solid fa-check"></i> ${input.files[0].name}`;
+            }
+        });
+    };
+
+    // Setup all drop zones
+    setupDropZone('video-drop-zone', 'video-input');
+    setupDropZone('bg-drop-zone', 'bg-input');
+    setupDropZone('wm-drop-zone', 'wm-input');
+
+    // Video Compression
+    const compressBtn = document.getElementById('compress-btn');
+    if (compressBtn) {
+        compressBtn.addEventListener('click', async () => {
+            const videoInput = document.getElementById('video-input');
+            const compressionLevel = document.getElementById('compression-level');
+            const status = document.getElementById('compress-status');
+            
+            if (!videoInput.files.length) {
+                alert('Veuillez sélectionner une vidéo.');
+                return;
+            }
+
+            compressBtn.disabled = true;
+            compressBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Compression...';
+            status.classList.remove('hidden');
+            status.innerHTML = '<div class="loader"></div><p>Compression en cours... Cela peut prendre plusieurs minutes.</p>';
+
+            const formData = new FormData();
+            formData.append('file', videoInput.files[0]);
+            formData.append('quality', compressionLevel.value);
+
+            try {
+                const response = await fetch('/api/compress-video', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.success) {
+                    status.innerHTML = `<i class="fa-solid fa-check" style="color: var(--primary); font-size: 1.5rem;"></i><p>Terminé ! <a href="${data.download_url}" download target="_blank" style="color: var(--text-main); text-decoration: underline;">Télécharger</a></p>`;
+                } else {
+                    status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${data.error}</p>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Une erreur est survenue.</p>`;
+            } finally {
+                compressBtn.disabled = false;
+                compressBtn.innerHTML = '<span>Compresser la Vidéo</span><i class="fa-solid fa-compress"></i>';
+            }
+        });
+    }
+
+    // Background Removal
+    const removebgBtn = document.getElementById('removebg-btn');
+    if (removebgBtn) {
+        removebgBtn.addEventListener('click', async () => {
+            const bgInput = document.getElementById('bg-input');
+            const status = document.getElementById('removebg-status');
+            
+            if (!bgInput.files.length) {
+                alert('Veuillez sélectionner une image.');
+                return;
+            }
+
+            removebgBtn.disabled = true;
+            removebgBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Traitement...';
+            status.classList.remove('hidden');
+            status.innerHTML = '<div class="loader"></div><p>Suppression du fond en cours...</p>';
+
+            const formData = new FormData();
+            formData.append('file', bgInput.files[0]);
+
+            try {
+                const response = await fetch('/api/remove-background', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.success) {
+                    status.innerHTML = `<i class="fa-solid fa-check" style="color: var(--primary); font-size: 1.5rem;"></i><p>Terminé ! <a href="${data.download_url}" download target="_blank" style="color: var(--text-main); text-decoration: underline;">Télécharger</a></p>`;
+                } else {
+                    status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${data.error}</p>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Une erreur est survenue.</p>`;
+            } finally {
+                removebgBtn.disabled = false;
+                removebgBtn.innerHTML = '<span>Supprimer le Fond</span><i class="fa-solid fa-eraser"></i>';
+            }
+        });
+    }
+
+    // Watermark Removal
+    const removewmBtn = document.getElementById('removewm-btn');
+    if (removewmBtn) {
+        removewmBtn.addEventListener('click', async () => {
+            const wmInput = document.getElementById('wm-input');
+            const status = document.getElementById('removewm-status');
+            
+            if (!wmInput.files.length) {
+                alert('Veuillez sélectionner une image.');
+                return;
+            }
+
+            removewmBtn.disabled = true;
+            removewmBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Traitement...';
+            status.classList.remove('hidden');
+            status.innerHTML = '<div class="loader"></div><p>Suppression du watermark...</p>';
+
+            const formData = new FormData();
+            formData.append('file', wmInput.files[0]);
+            formData.append('x', document.getElementById('wm-x').value);
+            formData.append('y', document.getElementById('wm-y').value);
+            formData.append('width', document.getElementById('wm-width').value);
+            formData.append('height', document.getElementById('wm-height').value);
+
+            try {
+                const response = await fetch('/api/remove-watermark', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.success) {
+                    status.innerHTML = `<i class="fa-solid fa-check" style="color: var(--primary); font-size: 1.5rem;"></i><p>Terminé ! <a href="${data.download_url}" download target="_blank" style="color: var(--text-main); text-decoration: underline;">Télécharger</a></p>`;
+                } else {
+                    status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${data.error}</p>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Une erreur est survenue.</p>`;
+            } finally {
+                removewmBtn.disabled = false;
+                removewmBtn.innerHTML = '<span>Supprimer le Watermark</span><i class="fa-solid fa-droplet-slash"></i>';
+            }
+        });
+    }
 });

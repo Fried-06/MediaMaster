@@ -2,10 +2,16 @@ import os
 import uuid
 import threading
 import socket
+import subprocess
+import io
+import numpy as np
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import yt_dlp
 from gtts import gTTS
+from PIL import Image
+from rembg import remove
+import cv2
 
 # --- DNS WORKAROUND FOR HUGGING FACE ---
 # Use Google DNS (8.8.8.8) to resolve hostnames
@@ -357,6 +363,147 @@ def convert_text():
 @app.route('/files/<path:filename>')
 def serve_file(filename):
     return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
+
+# --- VIDEO COMPRESSION ---
+@app.route('/api/compress-video', methods=['POST'])
+def compress_video():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    quality = request.form.get('quality', 'medium')  # low, medium, high
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    try:
+        # Save uploaded file
+        file_id = str(uuid.uuid4())
+        input_filename = f"{file_id}_input.mp4"
+        output_filename = f"{file_id}_compressed.mp4"
+        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        file.save(input_path)
+        
+        # Set compression parameters based on quality
+        if quality == 'low':
+            crf = 35  # Higher CRF = more compression, lower quality
+            scale = "640:-2"
+        elif quality == 'high':
+            crf = 23  # Lower CRF = less compression, higher quality
+            scale = "1920:-2"
+        else:  # medium
+            crf = 28
+            scale = "1280:-2"
+        
+        # Run ffmpeg compression
+        cmd = [
+            'ffmpeg', '-y', '-i', input_path,
+            '-vf', f'scale={scale}',
+            '-c:v', 'libx264', '-crf', str(crf),
+            '-c:a', 'aac', '-b:a', '128k',
+            '-movflags', '+faststart',
+            output_path
+        ]
+        
+        subprocess.run(cmd, check=True, capture_output=True)
+        
+        # Clean up input file
+        os.remove(input_path)
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}'
+        })
+        
+    except subprocess.CalledProcessError as e:
+        return jsonify({'error': f'Compression failed: {e.stderr.decode()}'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --- BACKGROUND REMOVAL ---
+@app.route('/api/remove-background', methods=['POST'])
+def remove_background():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    try:
+        # Read image
+        input_image = Image.open(file.stream)
+        
+        # Remove background
+        output_image = remove(input_image)
+        
+        # Save to bytes
+        file_id = str(uuid.uuid4())
+        output_filename = f"{file_id}_nobg.png"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        output_image.save(output_path, 'PNG')
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --- WATERMARK REMOVAL ---
+@app.route('/api/remove-watermark', methods=['POST'])
+def remove_watermark():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    
+    # Get mask coordinates from form data (x, y, width, height)
+    x = int(request.form.get('x', 0))
+    y = int(request.form.get('y', 0))
+    width = int(request.form.get('width', 100))
+    height = int(request.form.get('height', 50))
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    try:
+        # Read image with OpenCV
+        file_bytes = np.frombuffer(file.read(), np.uint8)
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            return jsonify({'error': 'Could not read image'}), 400
+        
+        # Create mask for inpainting
+        mask = np.zeros(img.shape[:2], dtype=np.uint8)
+        mask[y:y+height, x:x+width] = 255
+        
+        # Inpaint to remove watermark
+        result = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
+        
+        # Save result
+        file_id = str(uuid.uuid4())
+        output_filename = f"{file_id}_nowm.png"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        cv2.imwrite(output_path, result)
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("------------------ SERVER STARTING ------------------")

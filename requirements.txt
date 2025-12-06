@@ -5,3 +5,5 @@ moviepy==1.0.3
 gTTS==2.5.0
 gunicorn
 Pillow
+rembg
+opencv-python-headless

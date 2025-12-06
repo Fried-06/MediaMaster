@@ -56,16 +56,16 @@
 
 /* 🎄 Christmas Theme */
 [data-theme="christmas"] {
-  --primary: #dc2626;
-  --secondary: #16a34a;
-  --bg-dark: #1a1a2e;
-  --glass-bg: rgba(220, 38, 38, 0.1);
-  --glass-border: rgba(255, 255, 255, 0.2);
+  --primary: #ef4444;
+  --secondary: #22c55e;
+  --bg-dark: #0d1117;
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.15);
   --text-main: #ffffff;
-  --text-muted: #fecaca;
-  --gradient-main: linear-gradient(135deg, #dc2626 0%, #16a34a 100%);
-  --card-bg: rgba(0, 0, 0, 0.3);
-  --input-bg: rgba(0, 0, 0, 0.3);
+  --text-muted: #fca5a5;
+  --gradient-main: linear-gradient(135deg, #dc2626 0%, #ffffff 50%, #16a34a 100%);
+  --card-bg: rgba(139, 0, 0, 0.15);
+  --input-bg: rgba(0, 0, 0, 0.4);
 }
 
 /* Sunset Glow Theme */
@@ -187,6 +187,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  position: relative;
 }
 
 .nav-btn.active {

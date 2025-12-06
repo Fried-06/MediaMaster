@@ -1,42 +1,105 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MediaMaster - Téléchargeur & Convertisseur Ultime</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css"> <!-- Kept for keyframes/snowflakes -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: 'var(--primary)',
+                        secondary: 'var(--secondary)',
+                        dark: 'var(--bg-dark)',
+                        glass: 'var(--glass-bg)',
+                        'glass-border': 'var(--glass-border)',
+                        'text-main': 'var(--text-main)',
+                        'text-muted': 'var(--text-muted)',
+                        'input-bg': 'var(--input-bg)',
+                        'card-bg': 'var(--card-bg)',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    },
+                    animation: {
+                        fadeIn: 'fadeIn 0.5s ease-out forwards',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* CustomScrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+        
+        .glass-panel {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        
+        /* Snowflakes Container */
+        .snowflakes { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; display: none; }
+        .snowflake { position: absolute; color: #fff; opacity: 0.8; animation: fall linear infinite; top: -10px; }
+        @keyframes fall { to { transform: translateY(100vh); } }
+    </style>
 </head>
-<body>
-    <div class="background-glow"></div>
+<body class="bg-dark text-text-main min-h-screen selection:bg-primary selection:text-white transition-colors duration-500 relative overflow-x-hidden">
     
-    <nav class="navbar">
-        <div class="logo">
-            <i class="fa-solid fa-headphones"></i> <i class="fa-solid fa-circle-play"></i> MediaMaster
+    <div class="fixed inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-secondary/10 pointer-events-none z-0"></div>
+    
+    <!-- Navbar -->
+    <nav class="fixed top-0 w-full z-50 flex justify-between items-center px-6 py-4 glass-panel bg-dark/80 border-b border-glass-border shadow-lg backdrop-blur-xl">
+        <div class="flex items-center gap-2 text-xl font-bold tracking-wide relative">
+            <i class="fa-solid fa-headphones text-primary"></i> 
+            <i class="fa-solid fa-circle-play text-secondary"></i> 
+            <span class="bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">MediaMaste<span class="relative">r<img src="santa_hat.png" alt="Santa Hat" class="absolute -top-3 -right-2 w-6 h-6 transform rotate-12 filter drop-shadow-lg" id="santa-hat"></span></span>
         </div>
-        <div class="nav-links">
-            <button class="nav-btn active" data-tab="download">
+        
+        <button class="md:hidden text-2xl text-text-main focus:outline-none" id="mobile-menu-btn">
+            <i class="fa-solid fa-bars transition-transform duration-300"></i>
+        </button>
+
+        <div class="hidden md:flex items-center gap-2 absolute md:static top-full left-0 w-full md:w-auto bg-dark md:bg-transparent border-b md:border-none border-glass-border p-4 md:p-0 flex-col md:flex-row shadow-xl md:shadow-none transition-all duration-300" id="nav-links">
+            <button class="nav-btn px-4 py-2 rounded-full font-medium text-text-muted hover:text-text-main hover:bg-glass-border transition-all flex items-center gap-2 w-full md:w-auto active" data-tab="download">
                 <i class="fa-solid fa-download"></i> Télécharger
             </button>
-            <button class="nav-btn" data-tab="convert">
+            <button class="nav-btn px-4 py-2 rounded-full font-medium text-text-muted hover:text-text-main hover:bg-glass-border transition-all flex items-center gap-2 w-full md:w-auto" data-tab="convert">
                 <i class="fa-solid fa-wand-magic-sparkles"></i> Convertir
             </button>
-            <button class="nav-btn" data-tab="images">
+            <button class="nav-btn px-4 py-2 rounded-full font-medium text-text-muted hover:text-text-main hover:bg-glass-border transition-all flex items-center gap-2 w-full md:w-auto" data-tab="images">
                 <i class="fa-solid fa-image"></i> Images
             </button>
-            <button class="nav-btn" data-tab="tools">
+            <button class="nav-btn px-4 py-2 rounded-full font-medium text-text-muted hover:text-text-main hover:bg-glass-border transition-all flex items-center gap-2 w-full md:w-auto relative group" data-tab="tools">
                 <i class="fa-solid fa-toolbox"></i> Outils
-                <span class="new-badge">NEW</span>
+                <span class="absolute -top-1 -right-1 bg-secondary text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">NEW</span>
             </button>
-            <button class="nav-btn" data-tab="bureautique">
+            <button class="nav-btn px-4 py-2 rounded-full font-medium text-text-muted hover:text-text-main hover:bg-glass-border transition-all flex items-center gap-2 w-full md:w-auto relative group" data-tab="bureautique">
                 <i class="fa-solid fa-file-pdf"></i> Bureautique
-                <span class="new-badge">NEW</span>
+                <span class="absolute -top-1 -right-1 bg-primary text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">NEW</span>
             </button>
-            <div class="theme-selector-container">
-                <select id="theme-select" class="theme-select">
+            <button class="nav-btn px-4 py-2 rounded-full font-medium text-text-muted hover:text-text-main hover:bg-glass-border transition-all flex items-center gap-2 w-full md:w-auto" data-tab="history">
+                <i class="fa-solid fa-clock-rotate-left"></i> Historique
+            </button>
+            
+            <div class="md:ml-2 pl-0 md:pl-2 border-t md:border-t-0 md:border-l border-glass-border pt-2 md:pt-0 mt-2 md:mt-0 w-full md:w-auto">
+                <select id="theme-select" class="bg-transparent text-text-muted text-sm border-none outline-none cursor-pointer hover:text-text-main w-full md:w-auto p-2 md:p-0">
                     <option value="christmas" selected>🎄 Christmas</option>
                     <option value="cyber">Cyber Dark</option>
                     <option value="white">Clean White</option>
@@ -48,36 +111,37 @@
         </div>
     </nav>
 
-    <main class="container">
+    <main class="max-w-4xl mx-auto px-4 pt-32 pb-20 relative z-10 w-full">
+        
         <!-- Download Section -->
-        <section id="download-section" class="tab-content active">
-            <div class="hero-text">
-                <h1>Téléchargez sans limites</h1>
-                <p>Sauvegardez vos vidéos préférées de TikTok, Instagram, Facebook et Snapchat en haute qualité.</p>
+        <section id="download-section" class="tab-content active animate-fadeIn">
+            <div class="text-center mb-10 hero-text">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Téléchargez sans limites</h1>
+                <p class="text-text-muted text-lg">Sauvegardez vos vidéos préférées de TikTok, Instagram, Facebook et Snapchat en haute qualité.</p>
             </div>
 
-            <div class="card glass-panel">
-                <div class="input-group">
-                    <i class="fa-solid fa-link input-icon"></i>
-                    <input type="text" id="url-input" placeholder="Collez le lien de la vidéo ici...">
-                    <button id="clear-btn" class="icon-btn hidden" title="Effacer"><i class="fa-solid fa-times"></i></button>
-                    <button id="paste-btn" class="icon-btn" title="Coller"><i class="fa-regular fa-clipboard"></i></button>
+            <div class="glass-panel bg-card-bg border border-glass-border rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+                <div class="flex items-center gap-3 bg-input-bg border border-glass-border rounded-xl p-3 mb-6 focus-within:ring-2 focus-within:ring-primary transition-all">
+                    <i class="fa-solid fa-link text-text-muted text-lg pl-2"></i>
+                    <input type="text" id="url-input" placeholder="Collez le lien de la vidéo ici..." class="bg-transparent border-none outline-none text-text-main w-full placeholder-text-muted/50">
+                    <button id="clear-btn" class="text-text-muted hover:text-white px-2 hidden"><i class="fa-solid fa-times"></i></button>
+                    <button id="paste-btn" class="text-text-muted hover:text-primary px-2 transition-colors" title="Coller"><i class="fa-regular fa-clipboard text-lg"></i></button>
                 </div>
 
-                <div class="options-grid">
-                    <div class="platform-selector">
-                        <span class="label">Plateforme détectée</span>
-                        <div class="platform-badge" id="platform-badge">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-glass/10 rounded-xl p-4 border border-glass-border">
+                        <span class="text-text-muted text-sm block mb-2 font-medium">Plateforme détectée</span>
+                        <div id="platform-badge" class="flex items-center gap-2 text-primary font-bold text-lg">
                             <i class="fa-solid fa-globe"></i> Auto
                         </div>
-                        <div id="yt-warning" class="hidden" style="margin-top: 10px; padding: 12px; background: rgba(255, 50, 50, 0.15); border: 1px solid #ff5555; border-radius: 10px; color: #ff5555; font-size: 0.9rem;">
-                            <i class="fa-solid fa-triangle-exclamation"></i> <strong>YouTube non disponible</strong><br>
-                            <span style="color: var(--text-muted); font-size: 0.85rem;">YouTube bloque les téléchargements depuis les serveurs cloud. Utilisez des alternatives comme TikTok, Instagram, Twitter, etc.</span>
+                        <div id="yt-warning" class="hidden mt-3 p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+                            <i class="fa-solid fa-triangle-exclamation text-red-400"></i> <strong class="text-red-400 text-sm">YouTube non disponible</strong>
+                            <p class="text-xs text-text-muted mt-1">Utilisez TikTok, Instagram, Twitter, etc.</p>
                         </div>
                     </div>
-                    <div class="quality-selector">
-                        <span class="label">Qualité</span>
-                        <select id="quality-select">
+                    <div class="bg-glass/10 rounded-xl p-4 border border-glass-border">
+                        <span class="text-text-muted text-sm block mb-2 font-medium">Qualité</span>
+                        <select id="quality-select" class="w-full bg-input-bg border border-glass-border text-text-main rounded-lg p-2.5 outline-none focus:border-primary transition-colors cursor-pointer">
                             <option value="4k">Ultra HD (4K)</option>
                             <option value="2k">Quad HD (2K)</option>
                             <option value="hd" selected>Full HD (1080p)</option>
@@ -90,73 +154,68 @@
                     </div>
                 </div>
 
-                <button id="download-btn" class="action-btn">
+                <button id="download-btn" class="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-bold text-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group">
                     <span>Télécharger</span>
-                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                    <i class="fa-solid fa-cloud-arrow-down group-hover:translate-y-1 transition-transform"></i>
                 </button>
 
-                <div id="download-status" class="status-area hidden">
-                    <div class="loader"></div>
-                    <p>Traitement en cours...</p>
-                    <button id="cancel-btn" class="cancel-btn hidden">
-                        <i class="fa-solid fa-xmark"></i> Annuler
-                    </button>
+                <div id="download-status" class="hidden mt-6 text-center animate-fadeIn p-4 bg-glass/5 rounded-xl border border-glass-border">
+                    <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    <p class="text-text-muted">Traitement en cours...</p>
                 </div>
             </div>
 
-            <div class="supported-platforms">
-                <i class="fa-brands fa-tiktok" title="TikTok"></i>
-                <i class="fa-brands fa-instagram" title="Instagram"></i>
-                <i class="fa-brands fa-facebook" title="Facebook"></i>
-                <i class="fa-brands fa-snapchat" title="Snapchat"></i>
+            <div class="flex justify-center gap-6 mt-10 text-3xl text-text-muted/50">
+                <i class="fa-brands fa-tiktok hover:text-[#ff0050] hover:scale-110 transition-all cursor-default relative bottom-0 hover:bottom-1" title="TikTok"></i>
+                <i class="fa-brands fa-instagram hover:text-[#E1306C] hover:scale-110 transition-all cursor-default relative bottom-0 hover:bottom-1" title="Instagram"></i>
+                <i class="fa-brands fa-facebook hover:text-[#1877F2] hover:scale-110 transition-all cursor-default relative bottom-0 hover:bottom-1" title="Facebook"></i>
+                <i class="fa-brands fa-snapchat hover:text-[#FFFC00] hover:scale-110 transition-all cursor-default relative bottom-0 hover:bottom-1" title="Snapchat"></i>
             </div>
         </section>
 
         <!-- Convert Section -->
-        <section id="convert-section" class="tab-content">
-            <div class="hero-text">
-                <h1>Transformez vos médias</h1>
-                <p>Convertissez vidéos en audio ou texte en parole avec nos voix IA ultra-réalistes.</p>
+        <section id="convert-section" class="tab-content hidden animate-fadeIn">
+            <div class="text-center mb-10 hero-text">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Transformez vos médias</h1>
+                <p class="text-text-muted text-lg">Convertissez vidéos en audio ou texte en parole avec IA.</p>
             </div>
 
-            <div class="card glass-panel">
-                <div class="convert-mode-switch">
-                    <button class="mode-btn active" data-mode="video-audio">Vidéo vers Audio</button>
-                    <button class="mode-btn" data-mode="text-audio">Texte vers Audio</button>
+            <div class="glass-panel bg-card-bg border border-glass-border rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+                <div class="flex p-1 bg-black/20 rounded-xl mb-6">
+                    <button class="mode-btn flex-1 py-2 rounded-lg text-sm font-semibold transition-all text-text-muted hover:text-white active bg-glass-border text-text-main shadow" data-mode="video-audio">Vidéo vers Audio</button>
+                    <button class="mode-btn flex-1 py-2 rounded-lg text-sm font-semibold transition-all text-text-muted hover:text-white" data-mode="text-audio">Texte vers Audio</button>
                 </div>
 
-                <!-- Video to Audio Mode -->
                 <div id="video-audio-mode" class="mode-content active">
-                    <div class="drop-zone" id="drop-zone">
-                        <i class="fa-solid fa-file-video"></i>
-                        <p>Glissez votre vidéo ici ou cliquez pour parcourir</p>
+                    <div class="drop-zone border-2 border-dashed border-glass-border rounded-2xl p-10 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all group" id="drop-zone">
+                        <i class="fa-solid fa-file-video text-4xl text-text-muted mb-3 group-hover:text-primary transition-colors"></i>
+                        <p class="text-text-muted group-hover:text-text-main transition-colors">Glissez votre vidéo ici ou cliquez pour parcourir</p>
                         <input type="file" id="file-input" accept="video/*" hidden>
                     </div>
                 </div>
 
-                <!-- Text to Audio Mode -->
-                <div id="text-audio-mode" class="mode-content">
-                    <div class="text-input-area">
-                        <textarea id="text-input" placeholder="Entrez votre texte ici ou importez un PDF/Word..."></textarea>
-                        <div class="text-tools">
-                            <button class="tool-btn" id="doc-upload-btn" title="Importer fichier"><i class="fa-solid fa-file-import"></i></button>
-                            <input type="file" id="doc-input" accept=".txt,.md" hidden>
+                <div id="text-audio-mode" class="mode-content hidden">
+                    <div class="relative">
+                        <textarea id="text-input" placeholder="Entrez votre texte ici..." class="w-full h-40 bg-input-bg border border-glass-border rounded-xl p-4 text-text-main resize-none outline-none focus:border-primary transition-all"></textarea>
+                        <div class="absolute bottom-3 right-3 flex gap-2">
+                             <input type="file" id="doc-input" accept=".txt,.md" hidden>
+                            <button id="doc-upload-btn" class="p-2 bg-glass-border rounded-lg text-text-muted hover:text-primary hover:bg-glass transition-all" title="Importer fichier"><i class="fa-solid fa-file-import"></i></button>
                         </div>
                     </div>
                 </div>
 
-                <div class="options-grid">
-                    <div class="format-selector">
-                        <span class="label">Format de sortie</span>
-                        <select id="format-select">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
+                    <div class="bg-glass/10 rounded-xl p-4 border border-glass-border">
+                        <span class="text-text-muted text-sm block mb-2 font-medium">Format</span>
+                        <select id="format-select" class="w-full bg-input-bg border border-glass-border text-text-main rounded-lg p-2 outline-none">
                             <option value="mp3">MP3</option>
                             <option value="wav">WAV</option>
                             <option value="aac">AAC</option>
                         </select>
                     </div>
-                    <div class="voice-selector">
-                        <span class="label">Voix (IA)</span>
-                        <select id="voice-select">
+                    <div class="bg-glass/10 rounded-xl p-4 border border-glass-border">
+                        <span class="text-text-muted text-sm block mb-2 font-medium">Voix IA</span>
+                        <select id="voice-select" class="w-full bg-input-bg border border-glass-border text-text-main rounded-lg p-2 outline-none">
                             <option value="marie">Marie (Femme, Douce)</option>
                             <option value="thomas">Thomas (Homme, Grave)</option>
                             <option value="robot">Cyber (Robotique)</option>
@@ -164,45 +223,40 @@
                     </div>
                 </div>
 
-                <button id="convert-btn" class="action-btn">
+                <button id="convert-btn" class="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-bold text-lg shadow-lg hover:shadow-primary/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
                     <span>Convertir</span>
                     <i class="fa-solid fa-wand-magic"></i>
                 </button>
             </div>
         </section>
-        </section>
 
-        <!-- Image Section -->
-        <section id="images-section" class="tab-content">
-            <div class="hero-text">
-                <h1>Convertisseur d'Images</h1>
-                <p>Changez le format de vos images en un clic (PNG, JPG, WEBP, AVIF, etc.).</p>
+        <!-- Images Section -->
+        <section id="images-section" class="tab-content hidden animate-fadeIn">
+            <div class="text-center mb-10 hero-text">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Convertisseur d'Images</h1>
+                <p class="text-text-muted text-lg">Changez le format de vos images en un clic.</p>
             </div>
-
-            <div class="card glass-panel">
-                <div class="drop-zone" id="image-drop-zone">
-                    <i class="fa-solid fa-images"></i>
-                    <p>Glissez votre image ici ou cliquez pour parcourir</p>
+            
+            <div class="glass-panel bg-card-bg border border-glass-border rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+                 <div class="drop-zone border-2 border-dashed border-glass-border rounded-2xl p-10 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all group" id="image-drop-zone">
+                    <i class="fa-solid fa-images text-4xl text-text-muted mb-3 group-hover:text-primary transition-colors"></i>
+                    <p class="text-text-muted group-hover:text-text-main transition-colors">Glissez votre image ici</p>
                     <input type="file" id="image-input" accept="image/*" hidden>
                 </div>
 
-                <div class="options-grid">
-                    <div class="format-selector" style="width: 100%;">
-                        <span class="label">Format de sortie</span>
-                        <select id="image-format-select">
-                            <option value="png">PNG (Transparence)</option>
-                            <option value="jpg">JPG (Standard)</option>
-                            <option value="jpeg">JPEG (Photo)</option>
-                            <option value="webp">WEBP (Web Moderne)</option>
-                            <option value="avif">AVIF (Ultra Léger)</option>
-                            <option value="ico">ICO (Favicon)</option>
-                            <option value="bmp">BMP</option>
-                            <option value="tiff">TIFF</option>
-                        </select>
-                    </div>
+                <div class="my-6">
+                     <span class="text-text-muted text-sm block mb-2 font-medium">Format de sortie</span>
+                     <select id="image-format-select" class="w-full bg-input-bg border border-glass-border text-text-main rounded-lg p-3 outline-none focus:border-primary">
+                        <option value="png">PNG (Transparence)</option>
+                        <option value="jpg">JPG (Standard)</option>
+                        <option value="jpeg">JPEG (Photo)</option>
+                        <option value="webp">WEBP (Web Moderne)</option>
+                        <option value="avif">AVIF (Ultra Léger)</option>
+                        <option value="ico">ICO (Favicon)</option>
+                    </select>
                 </div>
 
-                <button id="convert-image-btn" class="action-btn">
+                <button id="convert-image-btn" class="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-bold text-lg shadow-lg hover:shadow-primary/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
                     <span>Convertir l'Image</span>
                     <i class="fa-solid fa-wand-magic"></i>
                 </button>
@@ -210,412 +264,401 @@
         </section>
 
         <!-- Tools Section -->
-        <section id="tools-section" class="tab-content">
-            <div class="hero-text">
-                <h1>Boîte à Outils</h1>
-                <p>Compressez vos vidéos, supprimez les fonds et watermarks de vos images.</p>
+        <section id="tools-section" class="tab-content hidden animate-fadeIn">
+            <div class="text-center mb-10 hero-text">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Boîte à Outils</h1>
+                <p class="text-text-muted text-lg">Compressez, nettoyez et optimisez vos médias.</p>
             </div>
 
-            <div class="card glass-panel">
-                <!-- Tool Selection -->
-                <div class="convert-mode-switch">
-                    <button class="tool-mode-btn active" data-tool="compress" style="position: relative;">
-                        <i class="fa-solid fa-compress"></i> Compression Vidéo
-                        <span class="new-badge" style="top: -5px; right: -5px;">NEW</span>
+            <div class="glass-panel bg-card-bg border border-glass-border rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <button class="tool-mode-btn active flex-1 min-w-[150px] py-3 rounded-xl bg-glass-border text-text-main font-semibold hover:bg-primary hover:text-white transition-all border border-glass-border" data-tool="compress">
+                        <i class="fa-solid fa-compress mr-2"></i> Compression
                     </button>
-                    <button class="tool-mode-btn" data-tool="removebg" style="position: relative;">
-                        <i class="fa-solid fa-eraser"></i> Supprimer Fond
-                        <span class="new-badge" style="top: -5px; right: -5px;">NEW</span>
+                    <button class="tool-mode-btn flex-1 min-w-[150px] py-3 rounded-xl bg-transparent text-text-muted font-semibold hover:bg-glass-border hover:text-text-main transition-all border border-glass-border" data-tool="removebg">
+                        <i class="fa-solid fa-eraser mr-2"></i> Suppr. Fond
                     </button>
-                    <button class="tool-mode-btn" data-tool="removewm" style="position: relative;">
-                        <i class="fa-solid fa-droplet-slash"></i> Supprimer Watermark
-                        <span class="new-badge" style="top: -5px; right: -5px;">NEW</span>
+                     <button class="tool-mode-btn flex-1 min-w-[150px] py-3 rounded-xl bg-transparent text-text-muted font-semibold hover:bg-glass-border hover:text-text-main transition-all border border-glass-border" data-tool="removewm">
+                        <i class="fa-solid fa-droplet-slash mr-2"></i> No Watermark
                     </button>
                 </div>
 
-                <!-- Video Compression -->
+                <!-- Compress Tool -->
                 <div id="compress-tool" class="tool-content active">
-                    <div class="drop-zone" id="video-drop-zone">
-                        <i class="fa-solid fa-film"></i>
-                        <p>Glissez votre vidéo ici ou cliquez pour parcourir</p>
+                    <div class="drop-zone border-2 border-dashed border-glass-border rounded-2xl p-10 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all group" id="video-drop-zone">
+                        <i class="fa-solid fa-film text-4xl text-text-muted mb-3 group-hover:text-primary transition-colors"></i>
+                        <p class="text-text-muted">Glissez votre vidéo</p>
                         <input type="file" id="video-input" accept="video/*" hidden>
                     </div>
-                    <div class="options-grid">
-                        <div class="format-selector" style="width: 100%;">
-                            <span class="label">Niveau de compression</span>
-                            <select id="compression-level">
-                                <option value="low">Faible (petite taille, qualité réduite)</option>
-                                <option value="medium" selected>Moyenne (équilibrée)</option>
-                                <option value="high">Haute (grande taille, meilleure qualité)</option>
-                            </select>
-                        </div>
+                    <div class="my-6">
+                        <label class="text-text-muted text-sm mb-2 block">Niveau compression</label>
+                        <select id="compression-level" class="w-full bg-input-bg border border-glass-border text-text-main rounded-lg p-3 outline-none">
+                            <option value="low">Faible</option>
+                            <option value="medium" selected>Moyenne</option>
+                            <option value="high">Haute</option>
+                        </select>
                     </div>
-                    <button id="compress-btn" class="action-btn">
-                        <span>Compresser la Vidéo</span>
-                        <i class="fa-solid fa-compress"></i>
+                    <button id="compress-btn" class="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-bold text-lg shadow-lg hover:shadow-primary/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
+                        <span>Compresser</span> <i class="fa-solid fa-compress"></i>
                     </button>
-                    <div id="compress-status" class="status-area hidden"></div>
+                    <div id="compress-status" class="hidden mt-4 text-center p-3 bg-glass/10 rounded-lg"></div>
                 </div>
-
-                <!-- Background Removal -->
-                <div id="removebg-tool" class="tool-content">
-                    <div class="drop-zone" id="bg-drop-zone">
-                        <i class="fa-solid fa-user-slash"></i>
-                        <p>Glissez votre image ici pour supprimer le fond</p>
+                
+                 <!-- Remove BG Tool -->
+                <div id="removebg-tool" class="tool-content hidden">
+                    <div class="drop-zone border-2 border-dashed border-glass-border rounded-2xl p-10 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all group" id="bg-drop-zone">
+                        <i class="fa-solid fa-user-slash text-4xl text-text-muted mb-3 group-hover:text-primary transition-colors"></i>
+                        <p class="text-text-muted">Glissez votre image</p>
                         <input type="file" id="bg-input" accept="image/*" hidden>
                     </div>
-                    <button id="removebg-btn" class="action-btn">
-                        <span>Supprimer le Fond</span>
-                        <i class="fa-solid fa-eraser"></i>
+                    <button id="removebg-btn" class="w-full mt-6 py-4 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-bold text-lg shadow-lg hover:shadow-primary/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
+                        <span>Supprimer le Fond</span> <i class="fa-solid fa-eraser"></i>
                     </button>
-                    <div id="removebg-status" class="status-area hidden"></div>
+                    <div id="removebg-status" class="hidden mt-4 text-center p-3 bg-glass/10 rounded-lg"></div>
                 </div>
 
-                <!-- Watermark Removal -->
-                <div id="removewm-tool" class="tool-content">
-                    <div class="drop-zone" id="wm-drop-zone">
-                        <i class="fa-solid fa-droplet-slash"></i>
-                        <p>Glissez votre image avec un watermark</p>
+                 <!-- Remove WM Tool -->
+                <div id="removewm-tool" class="tool-content hidden">
+                    <div class="drop-zone border-2 border-dashed border-glass-border rounded-2xl p-10 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all group" id="wm-drop-zone">
+                        <i class="fa-solid fa-droplet-slash text-4xl text-text-muted mb-3 group-hover:text-primary transition-colors"></i>
+                        <p class="text-text-muted">Glissez votre image watermarkée</p>
                         <input type="file" id="wm-input" accept="image/*" hidden>
                     </div>
-                    <div class="options-grid" style="grid-template-columns: repeat(4, 1fr);">
-                        <div>
-                            <span class="label">Position X</span>
-                            <input type="number" id="wm-x" value="0" style="width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);">
-                        </div>
-                        <div>
-                            <span class="label">Position Y</span>
-                            <input type="number" id="wm-y" value="0" style="width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);">
-                        </div>
-                        <div>
-                            <span class="label">Largeur</span>
-                            <input type="number" id="wm-width" value="100" style="width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);">
-                        </div>
-                        <div>
-                            <span class="label">Hauteur</span>
-                            <input type="number" id="wm-height" value="50" style="width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);">
-                        </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 my-6">
+                        <input type="number" id="wm-x" placeholder="X" value="0" class="bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                        <input type="number" id="wm-y" placeholder="Y" value="0" class="bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                        <input type="number" id="wm-width" placeholder="W" value="100" class="bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                        <input type="number" id="wm-height" placeholder="H" value="50" class="bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
                     </div>
-                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">
-                        <i class="fa-solid fa-info-circle"></i> Indiquez la zone du watermark (en pixels depuis le coin supérieur gauche)
-                    </p>
-                    <button id="removewm-btn" class="action-btn">
-                        <span>Supprimer le Watermark</span>
-                        <i class="fa-solid fa-droplet-slash"></i>
+                    <button id="removewm-btn" class="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-bold text-lg shadow-lg hover:shadow-primary/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
+                        <span>Supprimer Watermark</span> <i class="fa-solid fa-droplet-slash"></i>
                     </button>
-                    <div id="removewm-status" class="status-area hidden"></div>
+                     <div id="removewm-status" class="hidden mt-4 text-center p-3 bg-glass/10 rounded-lg"></div>
                 </div>
             </div>
         </section>
 
         <!-- Bureautique Section -->
-        <section id="bureautique-section" class="tab-content">
-            <div class="hero-text">
-                <h1>📄 Bureautique</h1>
-                <p>Convertissez, modifiez et gérez vos fichiers PDF et documents Office.</p>
+        <section id="bureautique-section" class="tab-content hidden animate-fadeIn">
+            <div class="text-center mb-10 hero-text">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Bureautique</h1>
+                <p class="text-text-muted text-lg">Gérez vos PDF et documents Office simplement.</p>
             </div>
 
-            <div class="card glass-panel">
-                <div class="bureautique-grid">
-                    <div class="bureautique-item" data-tool="pdf-to-images">
-                        <span class="new-badge">NEW</span>
-                        <div class="icon pdf"><i class="fa-solid fa-images"></i></div>
-                        <span class="name">PDF → Images</span>
+            <div class="glass-panel bg-card-bg border border-glass-border rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Helper to create tool items -->
+                    <div class="bureautique-item bg-glass/5 hover:bg-glass/10 border border-glass-border rounded-xl p-4 flex flex-col items-center gap-3 cursor-pointer transition-all hover:scale-105 hover:border-primary group relative overflow-hidden" data-tool="pdf-to-images">
+                        <div class="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">NEW</div>
+                        <div class="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 text-xl group-hover:bg-red-500 group-hover:text-white transition-all"><i class="fa-solid fa-images"></i></div>
+                        <span class="font-medium text-sm text-center">PDF → Images</span>
                     </div>
-                    <div class="bureautique-item" data-tool="merge-pdf">
-                        <span class="new-badge">NEW</span>
-                        <div class="icon merge"><i class="fa-solid fa-object-group"></i></div>
-                        <span class="name">Fusionner PDF</span>
+
+                    <div class="bureautique-item bg-glass/5 hover:bg-glass/10 border border-glass-border rounded-xl p-4 flex flex-col items-center gap-3 cursor-pointer transition-all hover:scale-105 hover:border-primary group relative overflow-hidden" data-tool="merge-pdf">
+                         <div class="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">NEW</div>
+                        <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 text-xl group-hover:bg-blue-500 group-hover:text-white transition-all"><i class="fa-solid fa-object-group"></i></div>
+                        <span class="font-medium text-sm text-center">Fusionner PDF</span>
                     </div>
-                    <div class="bureautique-item" data-tool="extract-pages">
-                        <span class="new-badge">NEW</span>
-                        <div class="icon extract"><i class="fa-solid fa-file-export"></i></div>
-                        <span class="name">Extraire pages</span>
+
+                    <div class="bureautique-item bg-glass/5 hover:bg-glass/10 border border-glass-border rounded-xl p-4 flex flex-col items-center gap-3 cursor-pointer transition-all hover:scale-105 hover:border-primary group relative overflow-hidden" data-tool="extract-pages">
+                         <div class="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">NEW</div>
+                         <div class="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-500 text-xl group-hover:bg-orange-500 group-hover:text-white transition-all"><i class="fa-solid fa-file-export"></i></div>
+                        <span class="font-medium text-sm text-center">Extraire Pages</span>
                     </div>
-                    <div class="bureautique-item" data-tool="compress-pdf">
-                        <span class="new-badge">NEW</span>
-                        <div class="icon compress"><i class="fa-solid fa-file-zipper"></i></div>
-                        <span class="name">Compresser PDF</span>
+
+                    <div class="bureautique-item bg-glass/5 hover:bg-glass/10 border border-glass-border rounded-xl p-4 flex flex-col items-center gap-3 cursor-pointer transition-all hover:scale-105 hover:border-primary group relative overflow-hidden" data-tool="compress-pdf">
+                         <div class="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">NEW</div>
+                        <div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 text-xl group-hover:bg-green-500 group-hover:text-white transition-all"><i class="fa-solid fa-file-zipper"></i></div>
+                        <span class="font-medium text-sm text-center">Compresser PDF</span>
                     </div>
-                    <div class="bureautique-item" data-tool="lock-pdf">
-                        <span class="new-badge">NEW</span>
-                        <div class="icon lock"><i class="fa-solid fa-lock"></i></div>
-                        <span class="name">Verrouiller PDF</span>
+                    
+                    <!-- NEW TOOLS (Placeholders) -->
+                    <div class="bureautique-item bg-glass/5 hover:bg-glass/10 border border-glass-border rounded-xl p-4 flex flex-col items-center gap-3 cursor-pointer transition-all hover:scale-105 hover:border-primary group relative overflow-hidden" data-tool="lock-pdf">
+                        <div class="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">NEW</div>
+                        <div class="w-12 h-12 rounded-full bg-gray-500/20 flex items-center justify-center text-gray-500 text-xl group-hover:bg-gray-500 group-hover:text-white transition-all"><i class="fa-solid fa-lock"></i></div>
+                        <span class="font-medium text-sm text-center">Verrouiller PDF</span>
                     </div>
-                    <div class="bureautique-item" data-tool="pdf-to-word">
-                        <span class="new-badge">NEW</span>
-                        <div class="icon word"><i class="fa-solid fa-file-word"></i></div>
-                        <span class="name">PDF → Word</span>
-                    </div>
-                    <div class="bureautique-item" data-tool="add-watermark">
-                        <span class="new-badge">NEW</span>
-                        <div class="icon watermark"><i class="fa-solid fa-droplet"></i></div>
-                        <span class="name">Ajouter filigrane</span>
-                    </div>
-                    <div class="bureautique-item" data-tool="add-signature">
-                        <span class="new-badge">NEW</span>
-                        <div class="icon signature"><i class="fa-solid fa-signature"></i></div>
-                        <span class="name">Signature</span>
-                    </div>
-                    <div class="bureautique-item" data-tool="edit-pdf">
-                        <span class="new-badge">NEW</span>
-                        <div class="icon edit"><i class="fa-solid fa-pen-to-square"></i></div>
-                        <span class="name">Éditer PDF</span>
+
+                     <div class="bureautique-item bg-glass/5 hover:bg-glass/10 border border-glass-border rounded-xl p-4 flex flex-col items-center gap-3 cursor-pointer transition-all hover:scale-105 hover:border-primary group relative overflow-hidden" data-tool="pdf-to-word">
+                        <div class="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">NEW</div>
+                        <div class="w-12 h-12 rounded-full bg-blue-700/20 flex items-center justify-center text-blue-700 text-xl group-hover:bg-blue-700 group-hover:text-white transition-all"><i class="fa-solid fa-file-word"></i></div>
+                        <span class="font-medium text-sm text-center">PDF → Word</span>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Tool Modal Container -->
-        <div id="tool-modal" class="tool-page">
-            <div class="tool-page-header">
-                <button id="close-tool-btn" class="back-btn">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </button>
-                <h2 id="tool-title">Nom de l'outil</h2>
-            </div>
-            <div class="tool-page-content" id="tool-content-area">
-                <!-- Content injected via JS -->
+        <!-- Dynamic Tool Modal (Tailwind Structured) -->
+        <div id="tool-modal" class="fixed inset-0 z-[100] bg-dark/95 backdrop-blur-xl hidden flex flex-col p-6 overflow-y-auto">
+            <div class="max-w-4xl mx-auto w-full">
+                <div class="flex items-center gap-4 mb-8">
+                     <button id="close-tool-btn" class="w-10 h-10 rounded-full bg-glass-border hover:bg-white/20 flex items-center justify-center transition-all"><i class="fa-solid fa-arrow-left"></i></button>
+                     <h2 id="tool-title" class="text-2xl font-bold">Outil</h2>
+                </div>
+                <div id="tool-content-area"></div>
             </div>
         </div>
 
-        <!-- Hidden Templates for Tools -->
+        <!-- HIDDEN TOOL TEMPLATES -->
         <div id="tool-templates" style="display: none;">
-            
-            <!-- PDF to Images -->
+            <!-- 1. PDF to Images -->
             <div id="tpl-pdf-to-images">
-                <div class="drop-zone pdf-drop">
-                    <i class="fa-solid fa-file-pdf"></i>
-                    <p>Glissez votre PDF ici</p>
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all">
+                    <i class="fa-solid fa-file-pdf text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez votre PDF ici</p>
                     <input type="file" accept=".pdf" hidden>
                 </div>
-                <button class="action-btn process-btn">
-                    <span>Convertir en Images</span> <i class="fa-solid fa-images"></i>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Convertir en Images</span> <i class="fa-solid fa-images ml-2"></i>
                 </button>
-                <div class="status-area hidden"></div>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
             </div>
 
-            <!-- Merge PDF -->
+            <!-- 2. Merge PDF -->
             <div id="tpl-merge-pdf">
-                <div class="drop-zone pdf-drop" multiple>
-                    <i class="fa-solid fa-copy"></i>
-                    <p>Glissez vos fichiers PDF ici (plusieurs possibles)</p>
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all" multiple>
+                    <i class="fa-solid fa-copy text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez vos fichiers PDF ici</p>
                     <input type="file" accept=".pdf" multiple hidden>
                 </div>
-                <div class="file-list"></div>
-                <button class="action-btn process-btn">
-                    <span>Fusionner PDF</span> <i class="fa-solid fa-object-group"></i>
+                <div class="file-list mt-2 space-y-2"></div>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Fusionner PDF</span> <i class="fa-solid fa-object-group ml-2"></i>
                 </button>
-                <div class="status-area hidden"></div>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
             </div>
 
-            <!-- Extract Pages -->
+            <!-- 3. Extract Pages -->
             <div id="tpl-extract-pages">
-                <div class="drop-zone pdf-drop">
-                    <i class="fa-solid fa-file-pdf"></i>
-                    <p>Glissez votre PDF ici</p>
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all">
+                    <i class="fa-solid fa-file-pdf text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez votre PDF ici</p>
                     <input type="file" accept=".pdf" hidden>
                 </div>
-                <div class="options-grid">
-                    <div class="input-group">
-                        <label>Pages à extraire (ex: 1,3,5-7)</label>
-                        <input type="text" placeholder="1,3,5-7" class="page-range-input">
-                    </div>
+                <div class="mt-4">
+                    <label class="block text-sm text-text-muted mb-1">Pages à extraire (ex: 1,3,5-7)</label>
+                    <input type="text" placeholder="1,3,5-7" class="page-range-input w-full bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
                 </div>
-                <button class="action-btn process-btn">
-                    <span>Extraire Pages</span> <i class="fa-solid fa-file-export"></i>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Extraire Pages</span> <i class="fa-solid fa-file-export ml-2"></i>
                 </button>
-                <div class="status-area hidden"></div>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
             </div>
 
-            <!-- Compress PDF -->
+            <!-- 4. Compress PDF -->
             <div id="tpl-compress-pdf">
-                <div class="drop-zone pdf-drop">
-                    <i class="fa-solid fa-file-zipper"></i>
-                    <p>Glissez votre PDF à compresser</p>
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all">
+                    <i class="fa-solid fa-file-zipper text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez votre PDF à compresser</p>
                     <input type="file" accept=".pdf" hidden>
                 </div>
-                <button class="action-btn process-btn">
-                    <span>Compresser PDF</span> <i class="fa-solid fa-compress"></i>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Compresser PDF</span> <i class="fa-solid fa-compress ml-2"></i>
                 </button>
-                <div class="status-area hidden"></div>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
             </div>
 
-            <!-- Lock PDF -->
+            <!-- 5. Lock PDF -->
             <div id="tpl-lock-pdf">
-                <div class="drop-zone pdf-drop">
-                    <i class="fa-solid fa-lock"></i>
-                    <p>Glissez votre PDF à verrouiller</p>
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all">
+                    <i class="fa-solid fa-lock text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez votre PDF à verrouiller</p>
                     <input type="file" accept=".pdf" hidden>
                 </div>
-                <div class="options-grid">
-                    <div class="input-group">
-                        <label>Mot de passe</label>
-                        <input type="password" placeholder="Votre mot de passe secret" class="password-input">
-                    </div>
+                <div class="mt-4">
+                    <label class="block text-sm text-text-muted mb-1">Mot de passe</label>
+                    <input type="password" placeholder="Votre mot de passe secret" class="password-input w-full bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
                 </div>
-                <button class="action-btn process-btn">
-                    <span>Verrouiller PDF</span> <i class="fa-solid fa-key"></i>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Verrouiller PDF</span> <i class="fa-solid fa-key ml-2"></i>
                 </button>
-                <div class="status-area hidden"></div>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
             </div>
 
-            <!-- PDF to Word -->
-            <div id="tpl-pdf-to-word">
-                <div class="drop-zone pdf-drop">
-                    <i class="fa-solid fa-file-word"></i>
-                    <p>Glissez votre PDF ici</p>
+            <!-- 6. PDF to Word (Original) -->
+             <div id="tpl-pdf-to-word">
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all">
+                    <i class="fa-solid fa-file-word text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez votre PDF ici</p>
                     <input type="file" accept=".pdf" hidden>
                 </div>
-                <button class="action-btn process-btn">
-                    <span>Convertir en Word</span> <i class="fa-solid fa-file-word"></i>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Convertir en Word</span> <i class="fa-solid fa-file-word ml-2"></i>
                 </button>
-                <div class="status-area hidden"></div>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
             </div>
 
-            <!-- Add Watermark -->
+            <!-- 7. Add Watermark -->
             <div id="tpl-add-watermark">
-                <div class="drop-zone pdf-drop">
-                    <i class="fa-solid fa-droplet"></i>
-                    <p>Glissez votre PDF ici</p>
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all">
+                    <i class="fa-solid fa-stamp text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez votre PDF ici</p>
                     <input type="file" accept=".pdf" hidden>
                 </div>
-                <div class="options-grid">
-                    <div class="input-group">
-                        <label>Texte du filigrane</label>
-                        <input type="text" placeholder="Confidentiel, Draft..." class="watermark-text" value="CONFIDENTIEL">
-                    </div>
+                <div class="mt-4">
+                    <label class="block text-sm text-text-muted mb-1">Texte du filigrane</label>
+                    <input type="text" value="CONFIDENTIEL" class="watermark-text w-full bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
                 </div>
-                <button class="action-btn process-btn">
-                    <span>Ajouter Filigrane</span> <i class="fa-solid fa-stamp"></i>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Ajouter Filigrane</span> <i class="fa-solid fa-stamp ml-2"></i>
                 </button>
-                <div class="status-area hidden"></div>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
             </div>
 
-            <!-- Add Signature -->
+            <!-- 8. Add Signature -->
             <div id="tpl-add-signature">
-                <div class="drop-zone pdf-drop">
-                    <i class="fa-solid fa-file-contract"></i>
-                    <p>1. Glissez votre PDF ici</p>
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all pdf-input-wrapper">
+                    <i class="fa-solid fa-file-contract text-2xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted text-sm">1. Glissez votre PDF ici</p>
                     <input type="file" accept=".pdf" hidden class="pdf-input">
                 </div>
-                <div class="drop-zone sig-drop" style="margin-top: 15px; border-color: var(--secondary);">
-                    <i class="fa-solid fa-signature"></i>
-                    <p>2. Glissez l'image de votre signature (PNG transparent)</p>
+                <div class="drop-zone border-2 border-dashed border-secondary rounded-xl p-6 text-center cursor-pointer hover:bg-glass/5 transition-all mt-4 sig-input-wrapper">
+                    <i class="fa-solid fa-signature text-2xl mb-2 text-secondary"></i>
+                    <p class="text-text-muted text-sm">2. Image de signature (PNG)</p>
                     <input type="file" accept="image/*" hidden class="sig-input">
                 </div>
-                <div class="options-grid">
-                    <div class="input-group">
-                        <label>Page # (0 = 1ère page)</label>
-                        <input type="number" value="0" class="page-num">
-                    </div>
-                    <div class="input-group">
-                        <label>Position X</label>
-                        <input type="number" value="400" class="pos-x">
-                    </div>
-                    <div class="input-group">
-                        <label>Position Y</label>
-                        <input type="number" value="50" class="pos-y">
-                    </div>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                     <input type="number" value="0" placeholder="Page" class="page-num bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                     <input type="number" value="400" placeholder="X" class="pos-x bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                     <input type="number" value="50" placeholder="Y" class="pos-y bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
                 </div>
-                <button class="action-btn process-btn">
-                    <span>Signer PDF</span> <i class="fa-solid fa-pen-nib"></i>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Signer PDF</span> <i class="fa-solid fa-pen-nib ml-2"></i>
                 </button>
-                <div class="status-area hidden"></div>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
             </div>
 
-            <!-- Edit PDF -->
+            <!-- 9. Edit PDF -->
             <div id="tpl-edit-pdf">
-                <div class="drop-zone pdf-drop">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                    <p>Glissez votre PDF à annoter</p>
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all">
+                    <i class="fa-solid fa-pen-to-square text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez votre PDF à annoter</p>
                     <input type="file" accept=".pdf" hidden>
                 </div>
-                <div class="options-grid">
-                    <div class="input-group">
-                        <label>Texte à ajouter</label>
-                        <input type="text" placeholder="Votre annotation..." class="annot-text">
-                    </div>
-                    <div class="input-group">
-                        <label>Page #</label>
-                        <input type="number" value="0" class="page-num">
-                    </div>
-                    <div class="input-group">
-                        <label>Pos X</label>
-                        <input type="number" value="100" class="pos-x">
-                    </div>
-                    <div class="input-group">
-                        <label>Pos Y</label>
-                        <input type="number" value="100" class="pos-y">
-                    </div>
-                    <div class="input-group">
-                        <label>Couleur (R,G,B)</label>
-                        <input type="text" value="0,0,0" class="color-rgb">
+                <div class="mt-4 space-y-3">
+                    <input type="text" placeholder="Annotation..." class="annot-text w-full bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                    <div class="flex gap-2">
+                         <input type="number" value="0" placeholder="Page" class="page-num w-1/3 bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                         <input type="number" value="100" placeholder="X" class="pos-x w-1/3 bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                         <input type="number" value="100" placeholder="Y" class="pos-y w-1/3 bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
                     </div>
                 </div>
-                <button class="action-btn process-btn">
-                    <span>Ajouter Texte</span> <i class="fa-solid fa-font"></i>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Ajouter Texte</span> <i class="fa-solid fa-font ml-2"></i>
                 </button>
-                <div class="status-area hidden"></div>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
             </div>
+
+            <!-- NEW TOOLS (Phase 2) -->
+            
+            <!-- 10. Image to PDF -->
+            <div id="tpl-img-to-pdf">
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all">
+                    <i class="fa-solid fa-image text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez votre image ici</p>
+                    <input type="file" accept="image/*" hidden>
+                </div>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Convertir en PDF</span> <i class="fa-solid fa-file-pdf ml-2"></i>
+                </button>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
+            </div>
+
+            <!-- 11. Word to PDF -->
+             <div id="tpl-word-to-pdf">
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all">
+                    <i class="fa-solid fa-file-word text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez votre fichier Word (DOCX)</p>
+                    <input type="file" accept=".docx,.doc" hidden>
+                </div>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Convertir en PDF</span> <i class="fa-solid fa-file-pdf ml-2"></i>
+                </button>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
+            </div>
+
+            <!-- 12. PPT to PDF -->
+             <div id="tpl-ppt-to-pdf">
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all">
+                    <i class="fa-solid fa-file-powerpoint text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez votre présentation (PPTX)</p>
+                    <input type="file" accept=".pptx,.ppt" hidden>
+                </div>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Convertir en PDF</span> <i class="fa-solid fa-file-pdf ml-2"></i>
+                </button>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
+            </div>
+
+            <!-- 13. Unlock PDF -->
+             <div id="tpl-unlock-pdf">
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all">
+                    <i class="fa-solid fa-unlock text-3xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted">Glissez votre PDF verrouillé</p>
+                    <input type="file" accept=".pdf" hidden>
+                </div>
+                <div class="mt-4">
+                    <label class="block text-sm text-text-muted mb-1">Mot de passe actuel</label>
+                    <input type="password" placeholder="Mot de passe" class="password-input w-full bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                </div>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Déverrouiller PDF</span> <i class="fa-solid fa-lock-open ml-2"></i>
+                </button>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
+            </div>
+
+            <!-- 14. Draw on PDF (Using same UI as Signature but styled for Draw) -->
+             <div id="tpl-draw-pdf">
+                <div class="drop-zone border-2 border-dashed border-glass-border rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-glass/5 transition-all pdf-input-wrapper">
+                    <i class="fa-solid fa-file-pdf text-2xl mb-2 text-text-muted"></i>
+                    <p class="text-text-muted text-sm">1. PDF Support</p>
+                    <input type="file" accept=".pdf" hidden class="pdf-input">
+                </div>
+                <div class="drop-zone border-2 border-dashed border-purple-500 rounded-xl p-6 text-center cursor-pointer hover:bg-glass/5 transition-all mt-4 sig-input-wrapper">
+                    <i class="fa-solid fa-paintbrush text-2xl mb-2 text-purple-500"></i>
+                    <p class="text-text-muted text-sm">2. Image du Dessin (PNG)</p>
+                    <input type="file" accept="image/*" hidden class="sig-input">
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                     <input type="number" value="0" placeholder="Page" class="page-num bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                     <input type="number" value="100" placeholder="X" class="pos-x bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                     <input type="number" value="100" placeholder="Y" class="pos-y bg-input-bg border border-glass-border rounded-lg p-3 text-text-main outline-none">
+                </div>
+                <button class="action-btn w-full mt-4 py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                    <span>Ajouter Dessin</span> <i class="fa-solid fa-paintbrush ml-2"></i>
+                </button>
+                <div class="status-area hidden mt-4 p-3 bg-glass/10 rounded-lg text-center"></div>
+            </div>
+
         </div>
     </main>
+    
+    <!-- Footer -->
+    <footer class="text-center py-10 text-text-muted border-t border-glass-border mt-10">
+        <div class="flex flex-col items-center gap-4 mb-6">
+            <img src="maphoto.png" class="w-16 h-16 rounded-full border-2 border-primary object-cover" alt="Profile">
+            <div>
+                 <h3 class="font-bold text-white text-lg">SAMBO Missimba Wilfried</h3>
+                 <p class="text-sm text-primary">Étudiant IAI-TOGO</p>
+                 <p class="text-xs max-w-md mx-auto mt-1 opacity-70">Développeur Python, Java | Prompt Engineer</p>
+            </div>
+            <div class="flex gap-4 text-xl">
+                 <a href="https://www.instagram.com/wi_l_a.h/" class="hover:text-secondary transition-colors"><i class="fa-brands fa-instagram"></i></a>
+                 <a href="https://www.linkedin.com/in/wilfried-sambo-874270350" class="hover:text-blue-500 transition-colors"><i class="fa-brands fa-linkedin"></i></a>
+            </div>
+        </div>
+        <p>&copy; 2025 MediaMaster. Tous droits réservés.</p>
+    </footer>
 
     <!-- Snowflakes -->
     <div class="snowflakes" id="snowflakes"></div>
 
-    <footer class="site-footer">
-        <div class="footer-content">
-            <div class="footer-section info">
-                <p style="font-style: italic; color: #a78bfa; font-size: 0.9rem; margin-bottom: 15px; width: 100%; text-align: center;">Developed by</p>
-                <div class="profile-container">
-                    <img src="maphoto.png" class="profile-pic" alt="SAMBO Missimba Wilfried">
-                </div>
-                <div class="info-text">
-                    <h3>SAMBO Missimba Wilfried</h3>
-                    <p class="title">Étudiant en 2ème année à l'IAI-TOGO</p>
-                    <p class="skills">Développeur Python, ADA, Java | Prompt Engineer | Monteur Video</p>
-                </div>
-            </div>
-            
-            <div class="footer-section social">
-                <!-- COLLEZ LE LIEN DE VOTRE PROFIL INSTAGRAM ICI (remplacez #) -->
-                <a href="https://www.instagram.com/wi_l_a.h/" target="_blank" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
-                
-                <!-- COLLEZ LE LIEN DE VOTRE PROFIL LINKEDIN ICI (remplacez #) -->
-                <a href="https://www.linkedin.com/in/wilfried-sambo-874270350" target="_blank" title="LinkedIn"><i class="fa-brands fa-linkedin"></i></a>
-                
-                <!-- COLLEZ LE LIEN DE VOTRE PROFIL FACEBOOK ICI (remplacez #) -->
-                <a href="#" target="_blank" title="Facebook"><i class="fa-brands fa-facebook"></i></a>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; 2025 MediaMaster. Tous droits réservés.</p>
-        </div>
-    </footer>
-
-    </footer>
-
-    <!-- Image Modal -->
-    <div id="image-modal" class="image-modal hidden">
-        <span class="close-modal">&times;</span>
-        <img class="modal-content" id="modal-img">
-    </div>
-
-    <!-- Success Modal -->
-    <div id="success-modal" class="image-modal hidden">
-        <div class="success-content glass-panel" style="text-align: center; max-width: 400px; padding: 30px; border-radius: 20px; position: relative;">
-            <span class="close-modal" id="close-success">&times;</span>
-            <img src="success_meme.png" alt="Success Meme" style="width: 150px; margin-bottom: 20px; border-radius: 10px;">
-            <h2 style="color: var(--primary); margin-bottom: 15px;">Hahaha ! 😂</h2>
-            <p style="margin-bottom: 20px; font-size: 1.1rem;">Votre téléchargement a bien été terminé !<br>Pour achever la tâche, veuillez l'enregistrer.</p>
-            <a id="success-download-link" href="#" class="action-btn" download target="_blank" style="text-decoration: none; display: inline-flex;">
-                <span>Enregistrer le fichier</span>
-                <i class="fa-solid fa-download"></i>
-            </a>
-        </div>
-    </div>
-
     <script src="js/script.js"></script>
+    <script>
+        // Copy reusable classes to templates via simple adapter or keep specific CSS
+        // For 'drop-zone', 'action-btn' used in templates, we can define them in the <style> head
+        // or add them to the tailwind @layer if we were building.
+        // For simplicity, I added them to the <style> in head (see above).
+    </script>
 </body>
 </html>

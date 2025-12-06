@@ -512,6 +512,8 @@ def remove_watermark():
 
 # --- PDF TOOLS ---
 
+from werkzeug.utils import secure_filename
+
 # 1. PDF to Images
 @app.route('/api/pdf-to-images', methods=['POST'])
 def pdf_to_images():
@@ -525,6 +527,9 @@ def pdf_to_images():
     try:
         from pdf2image import convert_from_path
         import zipfile
+        
+        # Helper for filename
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
         
         # Save input PDF
         file_id = str(uuid.uuid4())
@@ -541,13 +546,13 @@ def pdf_to_images():
         
         image_paths = []
         for i, image in enumerate(images):
-            image_filename = f"page_{i+1}.png"
+            image_filename = f"{original_name}_page_{i+1}.png"
             image_path = os.path.join(output_dir, image_filename)
             image.save(image_path, "PNG")
             image_paths.append(image_path)
             
         # Create ZIP file
-        zip_filename = f"{file_id}_images.zip"
+        zip_filename = f"{original_name}_images.zip"
         zip_path = os.path.join(DOWNLOAD_FOLDER, zip_filename)
         
         with zipfile.ZipFile(zip_path, 'w') as zipf:
@@ -585,6 +590,8 @@ def merge_pdf():
         temp_paths = []
         
         file_id = str(uuid.uuid4())
+        # Use first file name as base
+        first_name = os.path.splitext(secure_filename(files[0].filename))[0]
         
         for i, file in enumerate(files):
             temp_filename = f"{file_id}_{i}.pdf"
@@ -593,7 +600,7 @@ def merge_pdf():
             temp_paths.append(temp_path)
             merger.append(temp_path)
             
-        output_filename = f"{file_id}_merged.pdf"
+        output_filename = f"{first_name}_merged.pdf"
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
         
         merger.write(output_path)
@@ -630,6 +637,8 @@ def extract_pages():
     try:
         from PyPDF2 import PdfReader, PdfWriter
         
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
+        
         # Save input
         file_id = str(uuid.uuid4())
         input_filename = f"{file_id}.pdf"
@@ -656,7 +665,7 @@ def extract_pages():
             if 0 <= i < len(reader.pages):
                 writer.add_page(reader.pages[i])
                 
-        output_filename = f"{file_id}_extracted.pdf"
+        output_filename = f"{original_name}_extracted.pdf"
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
         
         with open(output_path, 'wb') as f:
@@ -687,6 +696,8 @@ def compress_pdf():
     try:
         import fitz  # pymupdf
         
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
+        
         # Save input
         file_id = str(uuid.uuid4())
         input_filename = f"{file_id}.pdf"
@@ -695,7 +706,7 @@ def compress_pdf():
         
         doc = fitz.open(input_path)
         
-        output_filename = f"{file_id}_compressed.pdf"
+        output_filename = f"{original_name}_compressed.pdf"
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
         
         # Compress by saving with garbage collection and deflate
@@ -731,6 +742,8 @@ def lock_pdf():
     try:
         from PyPDF2 import PdfReader, PdfWriter
         
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
+        
         # Save input
         file_id = str(uuid.uuid4())
         input_filename = f"{file_id}.pdf"
@@ -747,7 +760,7 @@ def lock_pdf():
         # Encrypt
         writer.encrypt(password)
         
-        output_filename = f"{file_id}_locked.pdf"
+        output_filename = f"{original_name}_locked.pdf"
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
         
         with open(output_path, 'wb') as f:
@@ -778,13 +791,15 @@ def pdf_to_word():
     try:
         from pdf2docx import Converter
         
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
+        
         # Save input
         file_id = str(uuid.uuid4())
         input_filename = f"{file_id}.pdf"
         input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
         file.save(input_path)
         
-        output_filename = f"{file_id}.docx"
+        output_filename = f"{original_name}.docx"
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
         
         # Convert
@@ -822,6 +837,8 @@ def add_watermark():
         from reportlab.lib.pagesizes import letter
         import io
         
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
+        
         # Save input
         file_id = str(uuid.uuid4())
         input_filename = f"{file_id}.pdf"
@@ -855,7 +872,7 @@ def add_watermark():
             page.merge_page(watermark_page)
             writer.add_page(page)
             
-        output_filename = f"{file_id}_watermarked.pdf"
+        output_filename = f"{original_name}_watermarked.pdf"
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
         
         with open(output_path, 'wb') as f:
@@ -898,6 +915,8 @@ def add_signature():
         from PIL import Image
         import io
         
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
+        
         # Save input
         file_id = str(uuid.uuid4())
         input_filename = f"{file_id}.pdf"
@@ -930,7 +949,7 @@ def add_signature():
                 page.merge_page(sig_page)
             writer.add_page(page)
             
-        output_filename = f"{file_id}_signed.pdf"
+        output_filename = f"{original_name}_signed.pdf"
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
         
         with open(output_path, 'wb') as f:
@@ -972,6 +991,8 @@ def edit_pdf():
     try:
         import fitz # pymupdf
         
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
+        
         # Save input
         file_id = str(uuid.uuid4())
         input_filename = f"{file_id}.pdf"
@@ -990,7 +1011,7 @@ def edit_pdf():
                 
             page.insert_text((x, y), text, fontsize=fontsize, color=(r, g, b))
             
-        output_filename = f"{file_id}_edited.pdf"
+        output_filename = f"{original_name}_edited.pdf"
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
         
         doc.save(output_path)
@@ -1007,6 +1028,191 @@ def edit_pdf():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+import json
+from datetime import datetime
+from werkzeug.utils import secure_filename
+
+# --- HISTORY & NEW TOOLS (Phase 2) ---
+
+HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'history.json')
+
+def log_history(action, filename, status='success'):
+    try:
+        entry = {
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'action': action,
+            'filename': filename,
+            'status': status
+        }
+        
+        history = []
+        if os.path.exists(HISTORY_FILE):
+            with open(HISTORY_FILE, 'r') as f:
+                try:
+                    history = json.load(f)
+                except:
+                    pass
+        
+        history.insert(0, entry) # Prepend
+        history = history[:100] # Keep last 100
+        
+        with open(HISTORY_FILE, 'w') as f:
+            json.dump(history, f, indent=4)
+            
+    except Exception as e:
+        print(f"Error logging history: {e}")
+
+@app.route('/api/history', methods=['GET'])
+def get_history():
+    try:
+        if os.path.exists(HISTORY_FILE):
+            with open(HISTORY_FILE, 'r') as f:
+                history = json.load(f)
+                return jsonify(history)
+        return jsonify([])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/img-to-pdf', methods=['POST'])
+def img_to_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+        
+    try:
+        import img2pdf
+        from PIL import Image
+        
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
+        file_id = str(uuid.uuid4())
+        
+        input_path = os.path.join(DOWNLOAD_FOLDER, f"{file_id}_{secure_filename(file.filename)}")
+        file.save(input_path)
+        
+        output_filename = f"{original_name}_converted.pdf"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        with open(output_path, "wb") as f:
+            f.write(img2pdf.convert(input_path))
+            
+        os.remove(input_path)
+        log_history('Image to PDF', output_filename)
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}',
+            'storage_path': os.path.abspath(output_path)
+        })
+    except Exception as e:
+        log_history('Image to PDF', file.filename, 'failed')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/word-to-pdf', methods=['POST'])
+def word_to_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+        
+    file = request.files['file']
+    if not file.filename.endswith(('.docx', '.doc')):
+        return jsonify({'error': 'Invalid file type. Please upload a Word document.'}), 400
+        
+    try:
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
+        file_id = str(uuid.uuid4())
+        
+        input_filename = f"{file_id}_{secure_filename(file.filename)}"
+        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
+        input_path_abs = os.path.abspath(input_path)
+        file.save(input_path)
+        
+        output_filename = f"{original_name}_converted.pdf"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        output_path_abs = os.path.abspath(output_path)
+        
+        if os.name == 'nt':
+            from docx2pdf import convert
+            convert(input_path_abs, output_path_abs)
+        else:
+            os.remove(input_path)
+            return jsonify({'error': 'Windows server required for Word conversion.'}), 501
+            
+        if os.path.exists(input_path): os.remove(input_path)
+        log_history('Word to PDF', output_filename)
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}',
+            'storage_path': output_path_abs
+        })
+    except Exception as e:
+        log_history('Word to PDF', file.filename, 'failed')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ppt-to-pdf', methods=['POST'])
+def ppt_to_pdf():
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
+    file = request.files['file']
+    try:
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
+        file_id = str(uuid.uuid4())
+        input_path = os.path.abspath(os.path.join(DOWNLOAD_FOLDER, f"{file_id}_{secure_filename(file.filename)}"))
+        file.save(input_path)
+        
+        output_filename = f"{original_name}_converted.pdf"
+        output_path = os.path.abspath(os.path.join(DOWNLOAD_FOLDER, output_filename))
+        
+        if os.name == 'nt':
+            import comtypes.client
+            powerpoint = comtypes.client.CreateObject("Powerpoint.Application")
+            # powerpoint.Visible = 1
+            deck = powerpoint.Presentations.Open(input_path)
+            deck.SaveAs(output_path, 32)
+            deck.Close()
+            powerpoint.Quit()
+        else:
+            return jsonify({'error': 'Windows server required.'}), 501
+            
+        if os.path.exists(input_path): os.remove(input_path)
+        log_history('PPT to PDF', output_filename)
+        return jsonify({'success': True, 'filename': output_filename, 'download_url': f'/files/{output_filename}', 'storage_path': output_path})
+    except Exception as e:
+        log_history('PPT to PDF', file.filename, 'failed')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/unlock-pdf', methods=['POST'])
+def unlock_pdf():
+    file = request.files.get('file')
+    password = request.form.get('password')
+    if not file or not password: return jsonify({'error': 'Missing file or password'}), 400
+    try:
+        import pikepdf
+        original_name = os.path.splitext(secure_filename(file.filename))[0]
+        input_path = os.path.join(DOWNLOAD_FOLDER, f"{uuid.uuid4()}.pdf")
+        file.save(input_path)
+        
+        output_filename = f"{original_name}_unlocked.pdf"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        with pikepdf.open(input_path, password=password) as pdf:
+            pdf.save(output_path)
+            
+        os.remove(input_path)
+        log_history('Unlock PDF', output_filename)
+        return jsonify({'success': True, 'filename': output_filename, 'download_url': f'/files/{output_filename}', 'storage_path': os.path.abspath(output_path)})
+    except Exception as e:
+        log_history('Unlock PDF', file.filename, 'failed')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/draw-pdf', methods=['POST'])
+def draw_pdf():
+    # Helper to allow drawing (overlay image)
+    return add_signature()
 
 if __name__ == '__main__':
     print("------------------ SERVER STARTING ------------------")

@@ -14,3 +14,7 @@ pdf2image
 pdf2docx
 pymupdf
 reportlab
+img2pdf
+docx2pdf; sys_platform == 'win32'
+comtypes; sys_platform == 'win32'
+pikepdf

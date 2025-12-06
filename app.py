@@ -10,8 +10,7 @@ from flask_cors import CORS
 import yt_dlp
 from gtts import gTTS
 from PIL import Image
-from rembg import remove
-import cv2
+# rembg and cv2 are loaded lazily to avoid startup timeout
 
 # --- DNS WORKAROUND FOR HUGGING FACE ---
 # Use Google DNS (8.8.8.8) to resolve hostnames
@@ -435,6 +434,9 @@ def remove_background():
         return jsonify({'error': 'No file selected'}), 400
     
     try:
+        # Lazy load rembg to avoid startup timeout
+        from rembg import remove
+        
         # Read image
         input_image = Image.open(file.stream)
         
@@ -475,6 +477,9 @@ def remove_watermark():
         return jsonify({'error': 'No file selected'}), 400
     
     try:
+        # Lazy load cv2 to avoid startup timeout
+        import cv2
+        
         # Read image with OpenCV
         file_bytes = np.frombuffer(file.read(), np.uint8)
         img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)

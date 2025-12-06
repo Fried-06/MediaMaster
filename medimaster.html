@@ -1,57 +1,3 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MediaMaster - Téléchargeur & Convertisseur Ultime</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-    <div class="background-glow"></div>
-    
-    <nav class="navbar">
-        <div class="logo">
-            <i class="fa-solid fa-headphones"></i> <i class="fa-solid fa-circle-play"></i> MediaMaster
-        </div>
-        <div class="nav-links">
-            <button class="nav-btn active" data-tab="download">
-                <i class="fa-solid fa-download"></i> Télécharger
-            </button>
-            <button class="nav-btn" data-tab="convert">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> Convertir
-            </button>
-            <button class="nav-btn" data-tab="images">
-                <i class="fa-solid fa-image"></i> Images
-            </button>
-            <button class="nav-btn" data-tab="tools">
-                <i class="fa-solid fa-toolbox"></i> Outils
-                <span class="new-badge">NEW</span>
-            </button>
-            <button class="nav-btn" data-tab="bureautique">
-                <i class="fa-solid fa-file-pdf"></i> Bureautique
-                <span class="new-badge">NEW</span>
-            </button>
-            <div class="theme-selector-container">
-                <select id="theme-select" class="theme-select">
-                    <option value="christmas" selected>🎄 Christmas</option>
-                    <option value="cyber">Cyber Dark</option>
-                    <option value="white">Clean White</option>
-                    <option value="purple">Midnight Purple</option>
-                    <option value="green">Forest Green</option>
-                    <option value="sunset">Sunset Glow</option>
-                </select>
-            </div>
-        </div>
-    </nav>
-
-    <main class="container">
-        <!-- Download Section -->
-        <section id="download-section" class="tab-content active">
-            <div class="hero-text">
                 <h1>Téléchargez sans limites</h1>
                 <p>Sauvegardez vos vidéos préférées de TikTok, Instagram, Facebook et Snapchat en haute qualité.</p>
             </div>
@@ -316,6 +262,16 @@
             </div>
 
             <div class="card glass-panel">
+                <h1>
+                    <span>M</span><span>e</span><span>d</span><span>i</span><span>a</span><span>M</span><span>a</span><span>s</span><span>t</span><span>e</span><span>r</span>
+                    <img src="santa_hat.png" class="santa-hat" alt="Santa Hat">
+                </h1>
+                <p>Téléchargez vidéos & musiques de n'importe où.</p>
+            </div>
+
+            <!-- ... existing content ... -->
+            
+            <div class="card glass-panel">
                 <div class="bureautique-grid">
                     <div class="bureautique-item" data-tool="pdf-to-images">
                         <span class="new-badge">NEW</span>
@@ -361,6 +317,32 @@
                         <span class="new-badge">NEW</span>
                         <div class="icon edit"><i class="fa-solid fa-pen-to-square"></i></div>
                         <span class="name">Éditer PDF</span>
+                    </div>
+                    <!-- NEW TOOLS RE-ADDED -->
+                    <div class="bureautique-item" data-tool="img-to-pdf">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon pdf"><i class="fa-solid fa-image"></i></div>
+                        <span class="name">Image → PDF</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="word-to-pdf">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon word"><i class="fa-solid fa-file-word"></i></div>
+                        <span class="name">Word → PDF</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="ppt-to-pdf">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon extract"><i class="fa-solid fa-file-powerpoint"></i></div>
+                        <span class="name">PPT → PDF</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="unlock-pdf">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon lock"><i class="fa-solid fa-unlock"></i></div>
+                        <span class="name">Déverrouiller</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="draw-pdf">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon edit"><i class="fa-solid fa-pen-nib"></i></div>
+                        <span class="name">Dessiner</span>
                     </div>
                 </div>
             </div>

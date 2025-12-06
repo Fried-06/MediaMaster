@@ -1001,3 +1001,19 @@ select option {
   margin: 0 auto;
   padding: 40px 20px;
 }
+
+/* New Icon Colors */
+.bureautique-item .icon.ppt { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+
+/* Santa Hat Nav */
+.santa-hat-nav {
+  position: absolute;
+  top: -15px;
+  right: -8px;
+  width: 25px;
+  height: auto;
+  transform: rotate(15deg);
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.3));
+  pointer-events: none;
+  z-index: 10;
+}

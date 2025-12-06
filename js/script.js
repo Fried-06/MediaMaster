@@ -848,7 +848,13 @@ document.addEventListener('DOMContentLoaded', () => {
         'pdf-to-word': { title: 'PDF en Word', templateId: 'tpl-pdf-to-word', endpoint: '/api/pdf-to-word' },
         'add-watermark': { title: 'Ajouter Filigrane', templateId: 'tpl-add-watermark', endpoint: '/api/add-watermark' },
         'add-signature': { title: 'Ajouter Signature', templateId: 'tpl-add-signature', endpoint: '/api/add-signature' },
-        'edit-pdf': { title: 'Éditer PDF', templateId: 'tpl-edit-pdf', endpoint: '/api/edit-pdf' }
+        'edit-pdf': { title: 'Éditer PDF', templateId: 'tpl-edit-pdf', endpoint: '/api/edit-pdf' },
+        // NEW TOOLS
+        'img-to-pdf': { title: 'Image vers PDF', templateId: 'tpl-img-to-pdf', endpoint: '/api/img-to-pdf' },
+        'word-to-pdf': { title: 'Word vers PDF', templateId: 'tpl-word-to-pdf', endpoint: '/api/word-to-pdf' },
+        'ppt-to-pdf': { title: 'PowerPoint vers PDF', templateId: 'tpl-ppt-to-pdf', endpoint: '/api/ppt-to-pdf' },
+        'unlock-pdf': { title: 'Déverrouiller PDF', templateId: 'tpl-unlock-pdf', endpoint: '/api/unlock-pdf' },
+        'draw-pdf': { title: 'Dessiner sur PDF', templateId: 'tpl-draw-pdf', endpoint: '/api/draw-pdf' }
     };
 
     // Open Modal
@@ -929,18 +935,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Specific Logic for Signature (Two Inputs)
-        if (toolKey === 'add-signature') {
-            const sigDrop = toolContentArea.querySelector('.sig-drop');
+        // Specific Logic for Signature/Draw (Two Inputs)
+        if (toolKey === 'add-signature' || toolKey === 'draw-pdf') {
+            const sigDrop = toolContentArea.querySelector('.sig-drop') || toolContentArea.querySelector('.sig-input-wrapper');
             const sigInput = toolContentArea.querySelector('.sig-input');
             
-            sigDrop.addEventListener('click', () => sigInput.click());
-            sigInput.addEventListener('change', (e) => {
-                if (e.target.files[0]) {
-                    sigDrop.querySelector('p').textContent = e.target.files[0].name;
-                    sigDrop.classList.add('has-file');
-                }
-            });
+            if (sigDrop && sigInput) {
+                sigDrop.addEventListener('click', () => sigInput.click());
+                sigInput.addEventListener('change', (e) => {
+                    if (e.target.files[0]) {
+                        // For draw-pdf, finding p might be different structure, handle safely
+                        const p = sigDrop.querySelector('p');
+                        if (p) p.textContent = e.target.files[0].name;
+                        sigDrop.classList.add('has-file');
+                    }
+                });
+            }
         }
 
         // Process Action
@@ -971,13 +981,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (input.className.includes('color-rgb')) formData.append('color', input.value);
             });
 
-            // Special case for signature file
-            if (toolKey === 'add-signature') {
+            // Special case for signature/draw file
+            if (toolKey === 'add-signature' || toolKey === 'draw-pdf') {
                 const sigInput = toolContentArea.querySelector('.sig-input');
-                if (sigInput.files[0]) {
+                if (sigInput && sigInput.files[0]) {
                     formData.append('signature', sigInput.files[0]);
                 } else {
-                    showStatus(statusArea, 'Veuillez ajouter une signature', 'error');
+                    showStatus(statusArea, 'Veuillez ajouter une image/signature', 'error');
                     return;
                 }
             }
@@ -995,7 +1005,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (data.success) {
-                    showStatus(statusArea, `Succès ! <a href="${data.download_url}" class="download-link" download>Télécharger le fichier</a>`, 'success');
+                    let msg = `Succès ! <a href="${data.download_url}" class="download-link" download>Télécharger le fichier</a>`;
+                    if (data.storage_path) {
+                        msg += `<br><span style="font-size:0.8em; color:var(--text-muted);">Enregistré sous : ${data.storage_path}</span>`;
+                    }
+                    showStatus(statusArea, msg, 'success');
                 } else {
                     showStatus(statusArea, `Erreur: ${data.error}`, 'error');
                 }

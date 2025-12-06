@@ -510,6 +510,504 @@ def remove_watermark():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# --- PDF TOOLS ---
+
+# 1. PDF to Images
+@app.route('/api/pdf-to-images', methods=['POST'])
+def pdf_to_images():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+        
+    try:
+        from pdf2image import convert_from_path
+        import zipfile
+        
+        # Save input PDF
+        file_id = str(uuid.uuid4())
+        input_filename = f"{file_id}.pdf"
+        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
+        file.save(input_path)
+        
+        # Create output directory for images
+        output_dir = os.path.join(DOWNLOAD_FOLDER, file_id)
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Convert output
+        images = convert_from_path(input_path)
+        
+        image_paths = []
+        for i, image in enumerate(images):
+            image_filename = f"page_{i+1}.png"
+            image_path = os.path.join(output_dir, image_filename)
+            image.save(image_path, "PNG")
+            image_paths.append(image_path)
+            
+        # Create ZIP file
+        zip_filename = f"{file_id}_images.zip"
+        zip_path = os.path.join(DOWNLOAD_FOLDER, zip_filename)
+        
+        with zipfile.ZipFile(zip_path, 'w') as zipf:
+            for img_path in image_paths:
+                zipf.write(img_path, os.path.basename(img_path))
+                
+        # Cleanup
+        os.remove(input_path)
+        import shutil
+        shutil.rmtree(output_dir)
+        
+        return jsonify({
+            'success': True,
+            'filename': zip_filename,
+            'download_url': f'/files/{zip_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 2. Merge PDF
+@app.route('/api/merge-pdf', methods=['POST'])
+def merge_pdf():
+    if 'files[]' not in request.files:
+        return jsonify({'error': 'No files provided'}), 400
+    
+    files = request.files.getlist('files[]')
+    if not files or files[0].filename == '':
+        return jsonify({'error': 'No files selected'}), 400
+        
+    try:
+        from PyPDF2 import PdfMerger
+        
+        merger = PdfMerger()
+        temp_paths = []
+        
+        file_id = str(uuid.uuid4())
+        
+        for i, file in enumerate(files):
+            temp_filename = f"{file_id}_{i}.pdf"
+            temp_path = os.path.join(DOWNLOAD_FOLDER, temp_filename)
+            file.save(temp_path)
+            temp_paths.append(temp_path)
+            merger.append(temp_path)
+            
+        output_filename = f"{file_id}_merged.pdf"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        merger.write(output_path)
+        merger.close()
+        
+        # Cleanup
+        for path in temp_paths:
+            if os.path.exists(path):
+                os.remove(path)
+                
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 3. Extract Pages
+@app.route('/api/extract-pages', methods=['POST'])
+def extract_pages():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+        
+    file = request.files['file']
+    pages_arg = request.form.get('pages', '') # "1,3,5-7"
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    if not pages_arg:
+        return jsonify({'error': 'No pages specified'}), 400
+        
+    try:
+        from PyPDF2 import PdfReader, PdfWriter
+        
+        # Save input
+        file_id = str(uuid.uuid4())
+        input_filename = f"{file_id}.pdf"
+        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
+        file.save(input_path)
+        
+        reader = PdfReader(input_path)
+        writer = PdfWriter()
+        
+        # Parse pages argument (e.g. "1,3,5-7")
+        page_indices = set()
+        parts = pages_arg.split(',')
+        for part in parts:
+            part = part.strip()
+            if '-' in part:
+                start, end = map(int, part.split('-'))
+                # 1-based to 0-based
+                for i in range(start-1, end):
+                    page_indices.add(i)
+            else:
+                page_indices.add(int(part) - 1)
+                
+        for i in sorted(page_indices):
+            if 0 <= i < len(reader.pages):
+                writer.add_page(reader.pages[i])
+                
+        output_filename = f"{file_id}_extracted.pdf"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        with open(output_path, 'wb') as f:
+            writer.write(f)
+            
+        # Cleanup
+        os.remove(input_path)
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 4. Compress PDF
+@app.route('/api/compress-pdf', methods=['POST'])
+def compress_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+        
+    try:
+        import fitz  # pymupdf
+        
+        # Save input
+        file_id = str(uuid.uuid4())
+        input_filename = f"{file_id}.pdf"
+        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
+        file.save(input_path)
+        
+        doc = fitz.open(input_path)
+        
+        output_filename = f"{file_id}_compressed.pdf"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        # Compress by saving with garbage collection and deflate
+        doc.save(output_path, garbage=4, deflate=True)
+        doc.close()
+        
+        # Cleanup
+        os.remove(input_path)
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 5. Lock PDF
+@app.route('/api/lock-pdf', methods=['POST'])
+def lock_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+        
+    file = request.files['file']
+    password = request.form.get('password')
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    if not password:
+        return jsonify({'error': 'No password provided'}), 400
+        
+    try:
+        from PyPDF2 import PdfReader, PdfWriter
+        
+        # Save input
+        file_id = str(uuid.uuid4())
+        input_filename = f"{file_id}.pdf"
+        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
+        file.save(input_path)
+        
+        reader = PdfReader(input_path)
+        writer = PdfWriter()
+        
+        # Add all pages
+        for page in reader.pages:
+            writer.add_page(page)
+            
+        # Encrypt
+        writer.encrypt(password)
+        
+        output_filename = f"{file_id}_locked.pdf"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        with open(output_path, 'wb') as f:
+            writer.write(f)
+            
+        # Cleanup
+        os.remove(input_path)
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 6. PDF to Word
+@app.route('/api/pdf-to-word', methods=['POST'])
+def pdf_to_word():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+        
+    try:
+        from pdf2docx import Converter
+        
+        # Save input
+        file_id = str(uuid.uuid4())
+        input_filename = f"{file_id}.pdf"
+        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
+        file.save(input_path)
+        
+        output_filename = f"{file_id}.docx"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        # Convert
+        cv = Converter(input_path)
+        cv.convert(output_path)
+        cv.close()
+        
+        # Cleanup
+        os.remove(input_path)
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 7. Add Watermark
+@app.route('/api/add-watermark', methods=['POST'])
+def add_watermark():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+        
+    file = request.files['file']
+    text = request.form.get('text', 'Watermark')
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+        
+    try:
+        from PyPDF2 import PdfReader, PdfWriter
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter
+        import io
+        
+        # Save input
+        file_id = str(uuid.uuid4())
+        input_filename = f"{file_id}.pdf"
+        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
+        file.save(input_path)
+        
+        # Create watermark PDF
+        packet = io.BytesIO()
+        can = canvas.Canvas(packet, pagesize=letter)
+        can.setFont("Helvetica", 40)
+        can.setFillColorRGB(0.5, 0.5, 0.5, 0.5) # Grey, semi-transparent
+        
+        # Draw text diagonally
+        can.saveState()
+        can.translate(300, 400)
+        can.rotate(45)
+        can.drawCentredString(0, 0, text)
+        can.restoreState()
+        
+        can.save()
+        packet.seek(0)
+        
+        watermark_pdf = PdfReader(packet)
+        watermark_page = watermark_pdf.pages[0]
+        
+        reader = PdfReader(input_path)
+        writer = PdfWriter()
+        
+        # Overlay watermark on each page
+        for page in reader.pages:
+            page.merge_page(watermark_page)
+            writer.add_page(page)
+            
+        output_filename = f"{file_id}_watermarked.pdf"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        with open(output_path, 'wb') as f:
+            writer.write(f)
+            
+        # Cleanup
+        os.remove(input_path)
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 8. Add Signature
+@app.route('/api/add-signature', methods=['POST'])
+def add_signature():
+    if 'file' not in request.files or 'signature' not in request.files:
+        return jsonify({'error': 'File or signature missing'}), 400
+        
+    file = request.files['file']
+    signature = request.files['signature']
+    
+    # Coords (normalized 0-1 or pixels?) Let's use pixels for now, defaulted to bottom right
+    x = int(request.form.get('x', 400))
+    y = int(request.form.get('y', 50))
+    width = int(request.form.get('width', 150))
+    height = int(request.form.get('height', 50))
+    page_num = int(request.form.get('page', 0)) # 0-indexed
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+        
+    try:
+        from PyPDF2 import PdfReader, PdfWriter
+        from reportlab.pdfgen import canvas
+        from PIL import Image
+        import io
+        
+        # Save input
+        file_id = str(uuid.uuid4())
+        input_filename = f"{file_id}.pdf"
+        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
+        file.save(input_path)
+        
+        # Create signature PDF
+        packet = io.BytesIO()
+        can = canvas.Canvas(packet)
+        
+        # Save signature image temporarily
+        sig_filename = f"{file_id}_sig.png"
+        sig_path = os.path.join(DOWNLOAD_FOLDER, sig_filename)
+        signature.save(sig_path)
+        
+        # Draw image
+        can.drawImage(sig_path, x, y, width=width, height=height, mask='auto')
+        can.save()
+        packet.seek(0)
+        
+        sig_pdf = PdfReader(packet)
+        sig_page = sig_pdf.pages[0]
+        
+        reader = PdfReader(input_path)
+        writer = PdfWriter()
+        
+        # Overlay signature on specific page
+        for i, page in enumerate(reader.pages):
+            if i == page_num:
+                page.merge_page(sig_page)
+            writer.add_page(page)
+            
+        output_filename = f"{file_id}_signed.pdf"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        with open(output_path, 'wb') as f:
+            writer.write(f)
+            
+        # Cleanup
+        os.remove(input_path)
+        if os.path.exists(sig_path):
+            os.remove(sig_path)
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 9. Edit PDF (Add Text Annotation)
+@app.route('/api/edit-pdf', methods=['POST'])
+def edit_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+        
+    file = request.files['file']
+    text = request.form.get('text', '')
+    x = float(request.form.get('x', 100))
+    y = float(request.form.get('y', 100))
+    page_num = int(request.form.get('page', 0))
+    fontsize = int(request.form.get('fontsize', 11))
+    color = request.form.get('color', '0,0,0') # "r,g,b"
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    if not text:
+        return jsonify({'error': 'No text provided'}), 400
+        
+    try:
+        import fitz # pymupdf
+        
+        # Save input
+        file_id = str(uuid.uuid4())
+        input_filename = f"{file_id}.pdf"
+        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
+        file.save(input_path)
+        
+        doc = fitz.open(input_path)
+        if 0 <= page_num < len(doc):
+            page = doc[page_num]
+            
+            # Parse color
+            r, g, b = map(float, color.split(','))
+            # Normalize to 0-1 if > 1
+            if r > 1 or g > 1 or b > 1:
+                r, g, b = r/255, g/255, b/255
+                
+            page.insert_text((x, y), text, fontsize=fontsize, color=(r, g, b))
+            
+        output_filename = f"{file_id}_edited.pdf"
+        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+        
+        doc.save(output_path)
+        doc.close()
+        
+        # Cleanup
+        os.remove(input_path)
+        
+        return jsonify({
+            'success': True,
+            'filename': output_filename,
+            'download_url': f'/files/{output_filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     print("------------------ SERVER STARTING ------------------")
     # For local development only

@@ -9,3 +9,8 @@ rembg
 opencv-python-headless
 onnxruntime
 numpy
+PyPDF2
+pdf2image
+pdf2docx
+pymupdf
+reportlab

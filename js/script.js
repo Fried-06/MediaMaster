@@ -775,4 +775,69 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- SNOWFLAKES ANIMATION (Christmas Theme) ---
+    const createSnowflakes = () => {
+        const snowflakesContainer = document.getElementById('snowflakes');
+        if (!snowflakesContainer) return;
+        
+        const snowflakeSymbols = ['❄', '❅', '❆', '✻', '✼', '❉'];
+        const numberOfSnowflakes = 50;
+
+        for (let i = 0; i < numberOfSnowflakes; i++) {
+            const snowflake = document.createElement('div');
+            snowflake.classList.add('snowflake');
+            snowflake.textContent = snowflakeSymbols[Math.floor(Math.random() * snowflakeSymbols.length)];
+            snowflake.style.left = Math.random() * 100 + 'vw';
+            snowflake.style.animationDuration = (Math.random() * 3 + 5) + 's';
+            snowflake.style.animationDelay = Math.random() * 5 + 's';
+            snowflake.style.fontSize = (Math.random() * 15 + 10) + 'px';
+            snowflakesContainer.appendChild(snowflake);
+        }
+    };
+
+    // Initialize snowflakes if Christmas theme
+    const initTheme = () => {
+        const savedTheme = localStorage.getItem('theme') || 'christmas';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        if (themeSelect) themeSelect.value = savedTheme;
+        
+        // Show/hide snowflakes based on theme
+        const snowflakesContainer = document.getElementById('snowflakes');
+        if (snowflakesContainer) {
+            if (savedTheme === 'christmas') {
+                snowflakesContainer.style.display = 'block';
+            } else {
+                snowflakesContainer.style.display = 'none';
+            }
+        }
+    };
+
+    // Create snowflakes on load
+    createSnowflakes();
+    initTheme();
+
+    // Update theme change handler to toggle snowflakes
+    if (themeSelect) {
+        themeSelect.addEventListener('change', (e) => {
+            const theme = e.target.value;
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            
+            const snowflakesContainer = document.getElementById('snowflakes');
+            if (snowflakesContainer) {
+                snowflakesContainer.style.display = theme === 'christmas' ? 'block' : 'none';
+            }
+        });
+    }
+
+    // --- BUREAUTIQUE SECTION ---
+    const bureautiqueItems = document.querySelectorAll('.bureautique-item');
+    bureautiqueItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const toolName = item.dataset.tool;
+            alert(`🚧 L'outil "${toolName}" sera bientôt disponible ! Les routes backend doivent d'abord être déployées.`);
+            // TODO: Open tool page after backend is ready
+        });
+    });
 });

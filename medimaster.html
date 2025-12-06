@@ -29,9 +29,15 @@
             </button>
             <button class="nav-btn" data-tab="tools">
                 <i class="fa-solid fa-toolbox"></i> Outils
+                <span class="new-badge">NEW</span>
+            </button>
+            <button class="nav-btn" data-tab="bureautique">
+                <i class="fa-solid fa-file-pdf"></i> Bureautique
+                <span class="new-badge">NEW</span>
             </button>
             <div class="theme-selector-container">
                 <select id="theme-select" class="theme-select">
+                    <option value="christmas" selected>🎄 Christmas</option>
                     <option value="cyber">Cyber Dark</option>
                     <option value="white">Clean White</option>
                     <option value="purple">Midnight Purple</option>
@@ -298,7 +304,68 @@
                 </div>
             </div>
         </section>
+
+        <!-- Bureautique Section -->
+        <section id="bureautique-section" class="tab-content">
+            <div class="hero-text">
+                <h1>📄 Bureautique</h1>
+                <p>Convertissez, modifiez et gérez vos fichiers PDF et documents Office.</p>
+            </div>
+
+            <div class="card glass-panel">
+                <div class="bureautique-grid">
+                    <div class="bureautique-item" data-tool="pdf-to-images">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon pdf"><i class="fa-solid fa-images"></i></div>
+                        <span class="name">PDF → Images</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="merge-pdf">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon merge"><i class="fa-solid fa-object-group"></i></div>
+                        <span class="name">Fusionner PDF</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="extract-pages">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon extract"><i class="fa-solid fa-file-export"></i></div>
+                        <span class="name">Extraire pages</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="compress-pdf">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon compress"><i class="fa-solid fa-file-zipper"></i></div>
+                        <span class="name">Compresser PDF</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="lock-pdf">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon lock"><i class="fa-solid fa-lock"></i></div>
+                        <span class="name">Verrouiller PDF</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="pdf-to-word">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon word"><i class="fa-solid fa-file-word"></i></div>
+                        <span class="name">PDF → Word</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="add-watermark">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon watermark"><i class="fa-solid fa-droplet"></i></div>
+                        <span class="name">Ajouter filigrane</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="add-signature">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon signature"><i class="fa-solid fa-signature"></i></div>
+                        <span class="name">Signature</span>
+                    </div>
+                    <div class="bureautique-item" data-tool="edit-pdf">
+                        <span class="new-badge">NEW</span>
+                        <div class="icon edit"><i class="fa-solid fa-pen-to-square"></i></div>
+                        <span class="name">Éditer PDF</span>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
+
+    <!-- Snowflakes -->
+    <div class="snowflakes" id="snowflakes"></div>
 
     <footer class="site-footer">
         <div class="footer-content">

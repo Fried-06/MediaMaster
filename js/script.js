@@ -1,28 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- NOTIFICATION SOUND ---
-    const playNotificationSound = () => {
-        // Simple "Ding" sound using AudioContext to avoid external files
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        
-        const ctx = new AudioContext();
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-        oscillator.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.1); // C6
-        
-        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        
-        oscillator.start();
-        oscillator.stop(ctx.currentTime + 0.5);
-    };
-
     // --- THEME MANAGEMENT ---
     const themeSelect = document.getElementById('theme-select');
     const savedTheme = localStorage.getItem('gemini3-theme') || 'cyber';
@@ -38,41 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('gemini3-theme', theme);
         });
 
-    }
-
-    // --- MOBILE MENU TOGGLE (Tailwind) ---
-    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-    const navLinks = document.getElementById('nav-links');
-
-    if (mobileMenuBtn && navLinks) {
-        mobileMenuBtn.addEventListener('click', () => {
-            navLinks.classList.toggle('hidden');
-            navLinks.classList.toggle('flex');
-            
-            // Toggle icon
-            const icon = mobileMenuBtn.querySelector('i');
-            if (!navLinks.classList.contains('hidden')) {
-                icon.classList.remove('fa-bars');
-                icon.classList.add('fa-times');
-            } else {
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
-            }
-        });
-
-        // Close menu when clicking a link
-        const navItems = navLinks.querySelectorAll('.nav-btn');
-        navItems.forEach(item => {
-            item.addEventListener('click', () => {
-                if(window.innerWidth < 768) {
-                    navLinks.classList.add('hidden');
-                    navLinks.classList.remove('flex');
-                    const icon = mobileMenuBtn.querySelector('i');
-                    icon.classList.remove('fa-times');
-                    icon.classList.add('fa-bars');
-                }
-            });
-        });
     }
 
     // --- TYPING EFFECT ---
@@ -126,73 +67,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     navBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            navBtns.forEach(b => b.classList.remove('active', 'text-text-main', 'bg-glass-border'));
-            b => b.classList.add('text-text-muted');
-            
-            tabContents.forEach(c => {
-                c.classList.add('hidden');
-                c.classList.remove('active');
-            });
+            navBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
 
-            // Activate button
-            btn.classList.add('active', 'text-text-main', 'bg-glass-border');
-            btn.classList.remove('text-text-muted');
-            
+            btn.classList.add('active');
             const tabId = btn.dataset.tab + '-section';
+            document.getElementById(tabId).classList.add('active');
+            
+            // Re-trigger typing effect for the new tab
             const newTab = document.getElementById(tabId);
+            const h1 = newTab.querySelector('.hero-text h1');
+            const p = newTab.querySelector('.hero-text p');
             
-            if (newTab) {
-                newTab.classList.remove('hidden');
-                newTab.classList.add('active'); // For typing effect selector
-                
-                // Re-trigger typing effect
-                const h1 = newTab.querySelector('.hero-text h1');
-                const p = newTab.querySelector('.hero-text p');
-                
-                if (h1) { h1.dataset.typed = ""; h1.innerText = h1.getAttribute('data-original-text') || h1.innerText; h1.setAttribute('data-original-text', h1.innerText); }
-                if (p) { p.dataset.typed = ""; p.innerText = p.getAttribute('data-original-text') || p.innerText; p.setAttribute('data-original-text', p.innerText); }
+            // Reset for re-typing (optional, remove if you only want it once)
+            if (h1) { h1.dataset.typed = ""; h1.innerText = h1.getAttribute('data-original-text') || h1.innerText; h1.setAttribute('data-original-text', h1.innerText); }
+            if (p) { p.dataset.typed = ""; p.innerText = p.getAttribute('data-original-text') || p.innerText; p.setAttribute('data-original-text', p.innerText); }
 
-                initTypingEffect();
-            }
-            
-            if (btn.dataset.tab === 'history') {
-                fetchHistory();
-            }
+            initTypingEffect();
         });
     });
-
-    // History Fetch Function
-    async function fetchHistory() {
-        const tbody = document.getElementById('history-table-body');
-        if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center"><div class="loader inline-block"></div> Chargement...</td></tr>';
-        
-        try {
-            const res = await fetch('/api/history');
-            const data = await res.json();
-            
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Aucune action enregistrée</td></tr>';
-                return;
-            }
-            
-            tbody.innerHTML = data.map(item => `
-                <tr class="border-b border-glass-border hover:bg-glass/5 transition-colors">
-                    <td class="p-4">${item.timestamp}</td>
-                    <td class="p-4 font-bold text-white">${item.action}</td>
-                    <td class="p-4 text-sm font-mono text-gray-300">${item.filename}</td>
-                    <td class="p-4">
-                        <span class="px-3 py-1 rounded-full text-xs font-bold ${item.status === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}">
-                            ${item.status === 'success' ? 'SUCCÈS' : 'ÉCHEC'}
-                        </span>
-                    </td>
-                </tr>
-            `).join('');
-            
-        } catch (e) {
-            tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-red-400">Erreur de chargement historique.</td></tr>';
-        }
-    }
 
     // --- CONVERTER MODE SWITCHING ---
     const modeBtns = document.querySelectorAll('.mode-btn');
@@ -501,7 +394,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.success) {
                 // Direct Download Logic
-                playNotificationSound();
                 const link = document.createElement('a');
                 link.href = data.download_url;
                 link.download = data.filename;
@@ -694,7 +586,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 a.click();
                 window.URL.revokeObjectURL(url);
                 
-                playNotificationSound();
                 alert('Conversion réussie !');
             } catch (error) {
                 console.error(error);
@@ -792,7 +683,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (data.success) {
-                    playNotificationSound();
                     status.innerHTML = `<i class="fa-solid fa-check" style="color: var(--primary); font-size: 1.5rem;"></i><p>Terminé ! <a href="${data.download_url}" download target="_blank" style="color: var(--text-main); text-decoration: underline;">Télécharger</a></p>`;
                 } else {
                     status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${data.error}</p>`;
@@ -831,7 +721,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (data.success) {
-                    playNotificationSound();
                     status.innerHTML = `<i class="fa-solid fa-check" style="color: var(--primary); font-size: 1.5rem;"></i><p>Terminé ! <a href="${data.download_url}" download target="_blank" style="color: var(--text-main); text-decoration: underline;">Télécharger</a></p>`;
                 } else {
                     status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${data.error}</p>`;
@@ -874,7 +763,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (data.success) {
-                    playNotificationSound();
                     status.innerHTML = `<i class="fa-solid fa-check" style="color: var(--primary); font-size: 1.5rem;"></i><p>Terminé ! <a href="${data.download_url}" download target="_blank" style="color: var(--text-main); text-decoration: underline;">Télécharger</a></p>`;
                 } else {
                     status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${data.error}</p>`;
@@ -960,13 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'pdf-to-word': { title: 'PDF en Word', templateId: 'tpl-pdf-to-word', endpoint: '/api/pdf-to-word' },
         'add-watermark': { title: 'Ajouter Filigrane', templateId: 'tpl-add-watermark', endpoint: '/api/add-watermark' },
         'add-signature': { title: 'Ajouter Signature', templateId: 'tpl-add-signature', endpoint: '/api/add-signature' },
-        'edit-pdf': { title: 'Éditer PDF', templateId: 'tpl-edit-pdf', endpoint: '/api/edit-pdf' },
-        // Phase 2 Tools
-        'img-to-pdf': { title: 'Image vers PDF', templateId: 'tpl-img-to-pdf', endpoint: '/api/img-to-pdf' },
-        'word-to-pdf': { title: 'Word vers PDF', templateId: 'tpl-word-to-pdf', endpoint: '/api/word-to-pdf' },
-        'ppt-to-pdf': { title: 'PPT vers PDF', templateId: 'tpl-ppt-to-pdf', endpoint: '/api/ppt-to-pdf' },
-        'unlock-pdf': { title: 'Déverrouiller PDF', templateId: 'tpl-unlock-pdf', endpoint: '/api/unlock-pdf' },
-        'draw-pdf': { title: 'Dessiner sur PDF', templateId: 'tpl-draw-pdf', endpoint: '/api/draw-pdf' }
+        'edit-pdf': { title: 'Éditer PDF', templateId: 'tpl-edit-pdf', endpoint: '/api/edit-pdf' }
     };
 
     // Open Modal
@@ -1047,8 +929,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Specific Logic for Signature/Draw (Two Inputs)
-        if (toolKey === 'add-signature' || toolKey === 'draw-pdf') {
+        // Specific Logic for Signature (Two Inputs)
+        if (toolKey === 'add-signature') {
             const sigDrop = toolContentArea.querySelector('.sig-drop');
             const sigInput = toolContentArea.querySelector('.sig-input');
             
@@ -1089,13 +971,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (input.className.includes('color-rgb')) formData.append('color', input.value);
             });
 
-            // Special case for signature/draw file
-            if (toolKey === 'add-signature' || toolKey === 'draw-pdf') {
+            // Special case for signature file
+            if (toolKey === 'add-signature') {
                 const sigInput = toolContentArea.querySelector('.sig-input');
                 if (sigInput.files[0]) {
                     formData.append('signature', sigInput.files[0]);
                 } else {
-                    showStatus(statusArea, 'Veuillez ajouter une image/signature', 'error');
+                    showStatus(statusArea, 'Veuillez ajouter une signature', 'error');
                     return;
                 }
             }
@@ -1113,12 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (data.success) {
-                    playNotificationSound();
-                    let msg = `Succès ! <a href="${data.download_url}" class="download-link text-primary underline" download>Télécharger le fichier</a>`;
-                    if (data.storage_path) {
-                        msg += `<div class="mt-2 text-xs text-text-muted bg-glass/5 p-2 rounded">Sauvegardé ici: <br><span class="font-mono select-all">${data.storage_path}</span></div>`;
-                    }
-                    showStatus(statusArea, msg, 'success');
+                    showStatus(statusArea, `Succès ! <a href="${data.download_url}" class="download-link" download>Télécharger le fichier</a>`, 'success');
                 } else {
                     showStatus(statusArea, `Erreur: ${data.error}`, 'error');
                 }

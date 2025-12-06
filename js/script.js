@@ -832,12 +832,185 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- BUREAUTIQUE SECTION ---
+    const toolModal = document.getElementById('tool-modal');
+    const toolContentArea = document.getElementById('tool-content-area');
+    const closeToolBtn = document.getElementById('close-tool-btn');
+    const toolTitle = document.getElementById('tool-title');
     const bureautiqueItems = document.querySelectorAll('.bureautique-item');
+
+    // Tool config
+    const toolConfig = {
+        'pdf-to-images': { title: 'PDF en Images', templateId: 'tpl-pdf-to-images', endpoint: '/api/pdf-to-images' },
+        'merge-pdf': { title: 'Fusionner PDF', templateId: 'tpl-merge-pdf', endpoint: '/api/merge-pdf' },
+        'extract-pages': { title: 'Extraire Pages', templateId: 'tpl-extract-pages', endpoint: '/api/extract-pages' },
+        'compress-pdf': { title: 'Compresser PDF', templateId: 'tpl-compress-pdf', endpoint: '/api/compress-pdf' },
+        'lock-pdf': { title: 'Verrouiller PDF', templateId: 'tpl-lock-pdf', endpoint: '/api/lock-pdf' },
+        'pdf-to-word': { title: 'PDF en Word', templateId: 'tpl-pdf-to-word', endpoint: '/api/pdf-to-word' },
+        'add-watermark': { title: 'Ajouter Filigrane', templateId: 'tpl-add-watermark', endpoint: '/api/add-watermark' },
+        'add-signature': { title: 'Ajouter Signature', templateId: 'tpl-add-signature', endpoint: '/api/add-signature' },
+        'edit-pdf': { title: 'Éditer PDF', templateId: 'tpl-edit-pdf', endpoint: '/api/edit-pdf' }
+    };
+
+    // Open Modal
     bureautiqueItems.forEach(item => {
         item.addEventListener('click', () => {
-            const toolName = item.dataset.tool;
-            alert(`🚧 L'outil "${toolName}" sera bientôt disponible ! Les routes backend doivent d'abord être déployées.`);
-            // TODO: Open tool page after backend is ready
+            const toolKey = item.dataset.tool;
+            const config = toolConfig[toolKey];
+            if (!config) return;
+
+            toolTitle.textContent = config.title;
+            const template = document.getElementById(config.templateId);
+            toolContentArea.innerHTML = template.innerHTML;
+            
+            toolModal.classList.add('active');
+            initToolLogic(toolKey, config);
         });
     });
+
+    // Close Modal
+    if (closeToolBtn) {
+        closeToolBtn.addEventListener('click', () => {
+            toolModal.classList.remove('active');
+        });
+    }
+
+    // Initialize logic for specific tool
+    const initToolLogic = (toolKey, config) => {
+        const dropZone = toolContentArea.querySelector('.drop-zone');
+        const fileInput = toolContentArea.querySelector('input[type="file"]');
+        const processBtn = toolContentArea.querySelector('.process-btn');
+        const statusArea = toolContentArea.querySelector('.status-area');
+        let selectedFiles = [];
+
+        // Drag and Drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-active'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-active'), false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (toolKey === 'merge-pdf') {
+                selectedFiles = [...selectedFiles, ...files];
+                updateFileList(selectedFiles);
+            } else {
+                selectedFiles = [files[0]];
+                dropZone.querySelector('p').textContent = files[0].name;
+                dropZone.classList.add('has-file');
+            }
+        }
+
+        function updateFileList(files) {
+            const fileList = toolContentArea.querySelector('.file-list');
+            if (fileList) {
+                fileList.innerHTML = Array.from(files).map(f => `<div class="file-item"><i class="fa-solid fa-file-pdf"></i> ${f.name}</div>`).join('');
+                if (files.length > 0) processBtn.disabled = false;
+            }
+        }
+
+        // Specific Logic for Signature (Two Inputs)
+        if (toolKey === 'add-signature') {
+            const sigDrop = toolContentArea.querySelector('.sig-drop');
+            const sigInput = toolContentArea.querySelector('.sig-input');
+            
+            sigDrop.addEventListener('click', () => sigInput.click());
+            sigInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    sigDrop.querySelector('p').textContent = e.target.files[0].name;
+                    sigDrop.classList.add('has-file');
+                }
+            });
+        }
+
+        // Process Action
+        processBtn.addEventListener('click', async () => {
+            if (selectedFiles.length === 0) {
+                showStatus(statusArea, 'Veuillez sélectionner un fichier', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            
+            if (toolKey === 'merge-pdf') {
+                selectedFiles.forEach(file => formData.append('files[]', file));
+            } else {
+                formData.append('file', selectedFiles[0]);
+            }
+
+            // Add extra parameters
+            const inputs = toolContentArea.querySelectorAll('input:not([type="file"])');
+            inputs.forEach(input => {
+                if (input.className.includes('page-range')) formData.append('pages', input.value);
+                if (input.className.includes('password')) formData.append('password', input.value);
+                if (input.className.includes('watermark')) formData.append('text', input.value);
+                if (input.className.includes('page-num')) formData.append('page', input.value);
+                if (input.className.includes('pos-x')) formData.append('x', input.value);
+                if (input.className.includes('pos-y')) formData.append('y', input.value);
+                if (input.className.includes('annot-text')) formData.append('text', input.value);
+                if (input.className.includes('color-rgb')) formData.append('color', input.value);
+            });
+
+            // Special case for signature file
+            if (toolKey === 'add-signature') {
+                const sigInput = toolContentArea.querySelector('.sig-input');
+                if (sigInput.files[0]) {
+                    formData.append('signature', sigInput.files[0]);
+                } else {
+                    showStatus(statusArea, 'Veuillez ajouter une signature', 'error');
+                    return;
+                }
+            }
+
+            processBtn.disabled = true;
+            processBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';
+            statusArea.classList.add('hidden');
+
+            try {
+                const response = await fetch(config.endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus(statusArea, `Succès ! <a href="${data.download_url}" class="download-link" download>Télécharger le fichier</a>`, 'success');
+                } else {
+                    showStatus(statusArea, `Erreur: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(statusArea, `Erreur de connexion: ${error.message}`, 'error');
+            } finally {
+                processBtn.disabled = false;
+                processBtn.innerHTML = `<span>${config.title}</span> <i class="fa-solid fa-check"></i>`;
+            }
+        });
+    };
+
+    function showStatus(element, message, type) {
+        element.innerHTML = message;
+        element.className = `status-area ${type}`;
+        element.classList.remove('hidden');
+    }
 });

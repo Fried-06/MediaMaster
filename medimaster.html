@@ -365,6 +365,200 @@
                 </div>
             </div>
         </section>
+
+        <!-- Tool Modal Container -->
+        <div id="tool-modal" class="tool-page">
+            <div class="tool-page-header">
+                <button id="close-tool-btn" class="back-btn">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <h2 id="tool-title">Nom de l'outil</h2>
+            </div>
+            <div class="tool-page-content" id="tool-content-area">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+
+        <!-- Hidden Templates for Tools -->
+        <div id="tool-templates" style="display: none;">
+            
+            <!-- PDF to Images -->
+            <div id="tpl-pdf-to-images">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <p>Glissez votre PDF ici</p>
+                    <input type="file" accept=".pdf" hidden>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Convertir en Images</span> <i class="fa-solid fa-images"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Merge PDF -->
+            <div id="tpl-merge-pdf">
+                <div class="drop-zone pdf-drop" multiple>
+                    <i class="fa-solid fa-copy"></i>
+                    <p>Glissez vos fichiers PDF ici (plusieurs possibles)</p>
+                    <input type="file" accept=".pdf" multiple hidden>
+                </div>
+                <div class="file-list"></div>
+                <button class="action-btn process-btn">
+                    <span>Fusionner PDF</span> <i class="fa-solid fa-object-group"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Extract Pages -->
+            <div id="tpl-extract-pages">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <p>Glissez votre PDF ici</p>
+                    <input type="file" accept=".pdf" hidden>
+                </div>
+                <div class="options-grid">
+                    <div class="input-group">
+                        <label>Pages à extraire (ex: 1,3,5-7)</label>
+                        <input type="text" placeholder="1,3,5-7" class="page-range-input">
+                    </div>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Extraire Pages</span> <i class="fa-solid fa-file-export"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Compress PDF -->
+            <div id="tpl-compress-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-file-zipper"></i>
+                    <p>Glissez votre PDF à compresser</p>
+                    <input type="file" accept=".pdf" hidden>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Compresser PDF</span> <i class="fa-solid fa-compress"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Lock PDF -->
+            <div id="tpl-lock-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-lock"></i>
+                    <p>Glissez votre PDF à verrouiller</p>
+                    <input type="file" accept=".pdf" hidden>
+                </div>
+                <div class="options-grid">
+                    <div class="input-group">
+                        <label>Mot de passe</label>
+                        <input type="password" placeholder="Votre mot de passe secret" class="password-input">
+                    </div>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Verrouiller PDF</span> <i class="fa-solid fa-key"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- PDF to Word -->
+            <div id="tpl-pdf-to-word">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-file-word"></i>
+                    <p>Glissez votre PDF ici</p>
+                    <input type="file" accept=".pdf" hidden>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Convertir en Word</span> <i class="fa-solid fa-file-word"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Add Watermark -->
+            <div id="tpl-add-watermark">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-droplet"></i>
+                    <p>Glissez votre PDF ici</p>
+                    <input type="file" accept=".pdf" hidden>
+                </div>
+                <div class="options-grid">
+                    <div class="input-group">
+                        <label>Texte du filigrane</label>
+                        <input type="text" placeholder="Confidentiel, Draft..." class="watermark-text" value="CONFIDENTIEL">
+                    </div>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Ajouter Filigrane</span> <i class="fa-solid fa-stamp"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Add Signature -->
+            <div id="tpl-add-signature">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-file-contract"></i>
+                    <p>1. Glissez votre PDF ici</p>
+                    <input type="file" accept=".pdf" hidden class="pdf-input">
+                </div>
+                <div class="drop-zone sig-drop" style="margin-top: 15px; border-color: var(--secondary);">
+                    <i class="fa-solid fa-signature"></i>
+                    <p>2. Glissez l'image de votre signature (PNG transparent)</p>
+                    <input type="file" accept="image/*" hidden class="sig-input">
+                </div>
+                <div class="options-grid">
+                    <div class="input-group">
+                        <label>Page # (0 = 1ère page)</label>
+                        <input type="number" value="0" class="page-num">
+                    </div>
+                    <div class="input-group">
+                        <label>Position X</label>
+                        <input type="number" value="400" class="pos-x">
+                    </div>
+                    <div class="input-group">
+                        <label>Position Y</label>
+                        <input type="number" value="50" class="pos-y">
+                    </div>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Signer PDF</span> <i class="fa-solid fa-pen-nib"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Edit PDF -->
+            <div id="tpl-edit-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <p>Glissez votre PDF à annoter</p>
+                    <input type="file" accept=".pdf" hidden>
+                </div>
+                <div class="options-grid">
+                    <div class="input-group">
+                        <label>Texte à ajouter</label>
+                        <input type="text" placeholder="Votre annotation..." class="annot-text">
+                    </div>
+                    <div class="input-group">
+                        <label>Page #</label>
+                        <input type="number" value="0" class="page-num">
+                    </div>
+                    <div class="input-group">
+                        <label>Pos X</label>
+                        <input type="number" value="100" class="pos-x">
+                    </div>
+                    <div class="input-group">
+                        <label>Pos Y</label>
+                        <input type="number" value="100" class="pos-y">
+                    </div>
+                    <div class="input-group">
+                        <label>Couleur (R,G,B)</label>
+                        <input type="text" value="0,0,0" class="color-rgb">
+                    </div>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Ajouter Texte</span> <i class="fa-solid fa-font"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+        </div>
     </main>
 
     <!-- Snowflakes -->

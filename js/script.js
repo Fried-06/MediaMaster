@@ -127,18 +127,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const platform = detectPlatform(url);
         platformBadge.innerHTML = `<i class="${platform.icon}"></i> ${platform.name}`;
         
+        // YouTube is now enabled on Hugging Face!
         const ytWarning = document.getElementById('yt-warning');
-        if (platform.name === 'YouTube') {
-            ytWarning.classList.remove('hidden');
-            downloadBtn.disabled = true;
-            downloadBtn.style.opacity = '0.5';
-            downloadBtn.title = "YouTube indisponible pour le moment";
-        } else {
-            if(ytWarning) ytWarning.classList.add('hidden');
-            downloadBtn.disabled = false;
-            downloadBtn.style.opacity = '1';
-            downloadBtn.title = "";
-        }
+        if (ytWarning) ytWarning.classList.add('hidden');
     };
 
     urlInput.addEventListener('input', (e) => {

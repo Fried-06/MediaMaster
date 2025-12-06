@@ -7,3 +7,5 @@ gunicorn
 Pillow
 rembg
 opencv-python-headless
+onnxruntime
+numpy

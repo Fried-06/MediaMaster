@@ -716,8 +716,22 @@ def compress_pdf():
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
         
         # Compress by saving with garbage collection and deflate
+        # Using "deflate" alone might increase size. 
+        # Attempt to downsample images if possible (needs scrubbing) or just standard clean.
         doc.save(output_path, garbage=4, deflate=True)
         doc.close()
+        
+        # Check if size actually decreased
+        input_size = os.path.getsize(input_path)
+        output_size = os.path.getsize(output_path)
+        
+        if output_size >= input_size:
+            # Compression failed to reduce size - return original (renamed)
+             # Or try a stronger compression if available? For now, fallback to original to avoid "bigger" file.
+             # Ideally we would downsample images here.
+             import shutil
+             shutil.copy2(input_path, output_path)
+             # Could rename to indicate no compression, but keep as is for consistency.
         
         # Cleanup
         os.remove(input_path)
@@ -1156,8 +1170,21 @@ def word_to_pdf():
             from docx2pdf import convert
             convert(input_path_abs, output_path_abs)
         else:
-            os.remove(input_path)
-            return jsonify({'error': 'Windows server required for Word conversion.'}), 501
+            # Linux (Render) - Use LibreOffice
+            import subprocess
+            # libreoffice --headless --convert-to pdf --outdir <dir> <file>
+            cmd = ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', DOWNLOAD_FOLDER, input_path]
+            subprocess.run(cmd, check=True)
+            # LibreOffice output filename is same as input basename .pdf
+            # Check if output exists (LibreOffice might name it slightly differently)
+            # The expected output is input_filename replaced extension with .pdf
+            # Our input was f"{file_id}_{secure_filename(file.filename)}"
+            # expected output name by LO: f"{file_id}_{secure_filename(file.filename).rsplit('.',1)[0]}.pdf"
+            
+            # We want to rename it to our standard output_filename
+            lo_output = os.path.splitext(input_path)[0] + ".pdf"
+            if os.path.exists(lo_output):
+                os.rename(lo_output, output_path)
             
         if os.path.exists(input_path): os.remove(input_path)
         log_history('Word to PDF', output_filename)
@@ -1194,7 +1221,15 @@ def ppt_to_pdf():
             deck.Close()
             powerpoint.Quit()
         else:
-            return jsonify({'error': 'Windows server required.'}), 501
+            # Linux (Render) - Use LibreOffice
+            import subprocess
+            cmd = ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', DOWNLOAD_FOLDER, input_path]
+            subprocess.run(cmd, check=True)
+            
+            # Rename output to match our convention
+            lo_output = os.path.splitext(input_path)[0] + ".pdf"
+            if os.path.exists(lo_output):
+                os.rename(lo_output, output_path)
             
         if os.path.exists(input_path): os.remove(input_path)
         log_history('PPT to PDF', output_filename)

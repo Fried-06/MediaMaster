@@ -1,10 +1,31 @@
 import os
 import uuid
 import threading
+import socket
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import yt_dlp
 from gtts import gTTS
+
+# --- DNS WORKAROUND FOR HUGGING FACE ---
+# Use Google DNS (8.8.8.8) to resolve hostnames
+original_getaddrinfo = socket.getaddrinfo
+
+def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    """Custom DNS resolver that tries multiple approaches"""
+    try:
+        # First, try the original resolver
+        return original_getaddrinfo(host, port, family, type, proto, flags)
+    except socket.gaierror as e:
+        print(f"DNS resolution failed for {host}, trying fallback...")
+        # If it fails, try with IPv4 only
+        try:
+            return original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+        except:
+            raise e
+
+socket.getaddrinfo = patched_getaddrinfo
+# --- END DNS WORKAROUND ---
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes

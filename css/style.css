@@ -129,21 +129,14 @@ body {
 .logo {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-main); /* Fallback */
-  background: var(--gradient-main);
-  -webkit-background-clip: text;
-  background-clip: text;
-  /* -webkit-text-fill-color: transparent; Removed to ensure visibility if gradient fails, or use check */
-  -webkit-text-fill-color: var(--text-main); /* Reset to visible color first, or use specific color */
+  color: var(--primary);
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
-/* Override for gradient text if supported */
-@supports (-webkit-background-clip: text) {
-  .logo {
-    -webkit-text-fill-color: transparent;
-  }
+
+.logo i {
+  color: var(--secondary);
 }
 
 .nav-links {

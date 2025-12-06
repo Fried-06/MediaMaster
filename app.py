@@ -564,6 +564,8 @@ def pdf_to_images():
         import shutil
         shutil.rmtree(output_dir)
         
+        log_history('PDF to Images', zip_filename)
+        
         return jsonify({
             'success': True,
             'filename': zip_filename,
@@ -611,6 +613,8 @@ def merge_pdf():
             if os.path.exists(path):
                 os.remove(path)
                 
+        log_history('Merge PDF', output_filename)
+        
         return jsonify({
             'success': True,
             'filename': output_filename,
@@ -674,6 +678,8 @@ def extract_pages():
         # Cleanup
         os.remove(input_path)
         
+        log_history('Extract Pages', output_filename)
+        
         return jsonify({
             'success': True,
             'filename': output_filename,
@@ -715,6 +721,8 @@ def compress_pdf():
         
         # Cleanup
         os.remove(input_path)
+        
+        log_history('Compress PDF', output_filename)
         
         return jsonify({
             'success': True,
@@ -769,6 +777,8 @@ def lock_pdf():
         # Cleanup
         os.remove(input_path)
         
+        log_history('Lock PDF', output_filename)
+        
         return jsonify({
             'success': True,
             'filename': output_filename,
@@ -809,6 +819,8 @@ def pdf_to_word():
         
         # Cleanup
         os.remove(input_path)
+        
+        log_history('PDF to Word', output_filename)
         
         return jsonify({
             'success': True,
@@ -880,6 +892,8 @@ def add_watermark():
             
         # Cleanup
         os.remove(input_path)
+        
+        log_history('Add Watermark', output_filename)
         
         return jsonify({
             'success': True,
@@ -960,6 +974,8 @@ def add_signature():
         if os.path.exists(sig_path):
             os.remove(sig_path)
         
+        log_history('Add Signature/Image', output_filename)
+        
         return jsonify({
             'success': True,
             'filename': output_filename,
@@ -1019,6 +1035,8 @@ def edit_pdf():
         
         # Cleanup
         os.remove(input_path)
+        
+        log_history('Edit PDF', output_filename)
         
         return jsonify({
             'success': True,

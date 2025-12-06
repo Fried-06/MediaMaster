@@ -581,37 +581,111 @@
                 <div class="status-area hidden"></div>
             </div>
 
-            <!-- Edit PDF -->
+            <!-- Edit PDF (Simplified) -->
             <div id="tpl-edit-pdf">
                 <div class="drop-zone pdf-drop">
                     <i class="fa-solid fa-pen-to-square"></i>
-                    <p>Glissez votre PDF à annoter</p>
+                    <p>Glissez votre PDF à éditer</p>
                     <input type="file" accept=".pdf" hidden>
                 </div>
                 <div class="options-grid">
-                    <div class="input-group">
-                        <label>Texte à ajouter</label>
-                        <input type="text" placeholder="Votre annotation..." class="annot-text">
+                    <div class="input-group" style="width: 100%;">
+                        <label>Texte à ajouter sur la première page</label>
+                        <input type="text" placeholder="Ex: Annotation, Note..." class="annot-text">
                     </div>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Ajouter Annotation</span> <i class="fa-solid fa-font"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Image to PDF -->
+            <div id="tpl-img-to-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-image"></i>
+                    <p>Glissez votre image ici (JPG, PNG, etc.)</p>
+                    <input type="file" accept="image/*" hidden>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Convertir en PDF</span> <i class="fa-solid fa-file-pdf"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Word to PDF -->
+            <div id="tpl-word-to-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-file-word"></i>
+                    <p>Glissez votre fichier Word (.docx)</p>
+                    <input type="file" accept=".docx,.doc" hidden>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Convertir en PDF</span> <i class="fa-solid fa-file-pdf"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- PPT to PDF -->
+            <div id="tpl-ppt-to-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-file-powerpoint"></i>
+                    <p>Glissez votre fichier PowerPoint (.pptx)</p>
+                    <input type="file" accept=".pptx,.ppt" hidden>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Convertir en PDF</span> <i class="fa-solid fa-file-pdf"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Unlock PDF -->
+            <div id="tpl-unlock-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-unlock"></i>
+                    <p>Glissez votre PDF protégé</p>
+                    <input type="file" accept=".pdf" hidden>
+                </div>
+                <div class="options-grid">
+                    <div class="input-group" style="width: 100%;">
+                        <label>Mot de passe actuel du PDF</label>
+                        <input type="password" placeholder="********" class="password-input">
+                    </div>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Déverrouiller</span> <i class="fa-solid fa-key"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Draw on PDF -->
+            <div id="tpl-draw-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-file-contract"></i>
+                    <p>1. Glissez votre PDF ici</p>
+                    <input type="file" accept=".pdf" hidden class="pdf-input">
+                </div>
+                <div class="drop-zone sig-drop" style="margin-top: 15px; border-color: var(--secondary);">
+                    <i class="fa-solid fa-pen-nib"></i>
+                    <p>2. Glissez votre dessin/image à ajouter</p>
+                    <input type="file" accept="image/*" hidden class="sig-input">
+                </div>
+                <div class="options-grid">
                     <div class="input-group">
                         <label>Page #</label>
                         <input type="number" value="0" class="page-num">
                     </div>
                     <div class="input-group">
-                        <label>Pos X</label>
+                        <label>Position X</label>
                         <input type="number" value="100" class="pos-x">
                     </div>
                     <div class="input-group">
-                        <label>Pos Y</label>
+                        <label>Position Y</label>
                         <input type="number" value="100" class="pos-y">
-                    </div>
-                    <div class="input-group">
-                        <label>Couleur (R,G,B)</label>
-                        <input type="text" value="0,0,0" class="color-rgb">
                     </div>
                 </div>
                 <button class="action-btn process-btn">
-                    <span>Ajouter Texte</span> <i class="fa-solid fa-font"></i>
+                    <span>Ajouter Dessin</span> <i class="fa-solid fa-pen-nib"></i>
                 </button>
                 <div class="status-area hidden"></div>
             </div>

@@ -129,13 +129,21 @@ body {
 .logo {
   font-size: 1.5rem;
   font-weight: 700;
+  color: var(--text-main); /* Fallback */
   background: var(--gradient-main);
   -webkit-background-clip: text;
   background-clip: text;
-  -webkit-text-fill-color: transparent;
+  /* -webkit-text-fill-color: transparent; Removed to ensure visibility if gradient fails, or use check */
+  -webkit-text-fill-color: var(--text-main); /* Reset to visible color first, or use specific color */
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+/* Override for gradient text if supported */
+@supports (-webkit-background-clip: text) {
+  .logo {
+    -webkit-text-fill-color: transparent;
+  }
 }
 
 .nav-links {
@@ -1016,4 +1024,26 @@ select option {
   filter: drop-shadow(0 2px 5px rgba(0,0,0,0.3));
   pointer-events: none;
   z-index: 10;
+}
+
+/* New Badge */
+.new-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: linear-gradient(135deg, #ff4d4d, #f43f5e);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(244, 63, 94, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    z-index: 10;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }

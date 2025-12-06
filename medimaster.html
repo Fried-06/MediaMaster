@@ -202,7 +202,8 @@
                     </div>
                 </div>
 
-                <button id="convert-image-btn" class="action-btn">
+                <button id="convert-image-btn" class="action-btn" style="position: relative;">
+                    <span class="new-badge">NEW</span>
                     <span>Convertir l'Image</span>
                     <i class="fa-solid fa-wand-magic"></i>
                 </button>
@@ -392,6 +393,32 @@
                         <div class="icon edit"><i class="fa-solid fa-pen-nib"></i></div>
                         <span class="name">Dessiner</span>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section id="history-section" class="tab-content">
+            <div class="hero-text">
+                <h1>⏳ Historique</h1>
+                <p>Retrouvez vos 100 dernières actions.</p>
+            </div>
+            
+            <div class="card glass-panel">
+                <div class="history-container" style="max-height: 400px; overflow-y: auto;">
+                    <table class="history-table" style="width: 100%; border-collapse: collapse; color: var(--text-main);">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--glass-border); text-align: left;">
+                                <th style="padding: 10px;">Date</th>
+                                <th style="padding: 10px;">Action</th>
+                                <th style="padding: 10px;">Fichier</th>
+                                <th style="padding: 10px;">Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-body">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>

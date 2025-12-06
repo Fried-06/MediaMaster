@@ -16,6 +16,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     }
 
+    // --- HISTORY LOGIC ---
+    const loadHistory = async () => {
+        const historyBody = document.getElementById('history-body');
+        if (!historyBody) return;
+        
+        historyBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">Chargement...</td></tr>';
+        
+        try {
+            const response = await fetch('/api/history');
+            const data = await response.json();
+            
+            historyBody.innerHTML = '';
+            
+            if (data.length === 0) {
+                historyBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">Aucun historique récent.</td></tr>';
+                return;
+            }
+            
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                row.innerHTML = `
+                    <td style="padding: 10px;">${item.timestamp}</td>
+                    <td style="padding: 10px;">${item.action}</td>
+                    <td style="padding: 10px;">${item.filename}</td>
+                    <td style="padding: 10px;"><span style="color: ${item.status === 'success' ? '#4ade80' : '#f87171'}">${item.status}</span></td>
+                `;
+                historyBody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Error loading history:', error);
+            historyBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #f87171;">Erreur de chargement.</td></tr>';
+        }
+    };
+
     // --- TYPING EFFECT ---
     const typeWriter = (element, text, speed = 50) => {
         element.innerHTML = '';
@@ -84,6 +119,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (p) { p.dataset.typed = ""; p.innerText = p.getAttribute('data-original-text') || p.innerText; p.setAttribute('data-original-text', p.innerText); }
 
             initTypingEffect();
+
+            // Load History if tab is active
+            if (btn.dataset.tab === 'history') {
+                loadHistory();
+            }
         });
     });
 

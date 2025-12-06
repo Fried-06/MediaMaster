@@ -1,3 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="cyber">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaMaster - Téléchargeur Universel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+    <div class="background-glow"></div>
+    <div class="snowflakes" aria-hidden="true">
+        <div class="snowflake">❅</div><div class="snowflake">❆</div><div class="snowflake">❄</div><div class="snowflake">❅</div><div class="snowflake">❆</div><div class="snowflake">❄</div>
+        <div class="snowflake">❅</div><div class="snowflake">❆</div><div class="snowflake">❄</div><div class="snowflake">❅</div>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">
+            <span style="position:relative; display:inline-block;">
+                <i class="fa-solid fa-play"></i> MediaMaster
+                <img src="santa_hat.png" class="santa-hat-nav" alt="Christmas Hat">
+            </span>
+        </div>
+        
+        <button id="mobile-menu-btn" class="mobile-menu-btn" style="display: none;">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+
+        <div class="nav-links" id="nav-links">
+            <button class="nav-btn active" data-tab="download">Télécharger</button>
+            <button class="nav-btn" data-tab="convert">Convertir</button>
+            <button class="nav-btn" data-tab="bureautique">Bureautique</button>
+            <button class="nav-btn" data-tab="history">Historique</button>
+            
+            <div class="theme-selector-container">
+                <select id="theme-select" class="theme-select">
+                    <option value="cyber">Cyber Dark</option>
+                    <option value="white">Clean White</option>
+                    <option value="purple">Midnight Purple</option>
+                    <option value="green">Forest Green</option>
+                    <option value="christmas">Christmas 🎄</option>
+                    <option value="sunset">Sunset Glow</option>
+                </select>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section id="download-section" class="tab-content active">
+            <div class="hero-text">
                 <h1>Téléchargez sans limites</h1>
                 <p>Sauvegardez vos vidéos préférées de TikTok, Instagram, Facebook et Snapchat en haute qualité.</p>
             </div>

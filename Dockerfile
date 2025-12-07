@@ -3,7 +3,7 @@ FROM python:3.11-slim
 
 # Install system dependencies including ffmpeg and poppler for PDF tools
 RUN apt-get update && \
-    apt-get install -y ffmpeg git poppler-utils libreoffice && \
+    apt-get install -y --no-install-recommends ffmpeg git poppler-utils libreoffice fonts-liberation && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

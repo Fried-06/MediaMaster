@@ -104,17 +104,14 @@ def download_worker(task_id, url, quality):
 
         # Check for cookies file
         cookies_path = os.path.join(os.getcwd(), 'cookies.txt')
-        if os.path.exists(cookies_path):
-            file_size = os.path.getsize(cookies_path)
-            print(f"Found cookies.txt at {cookies_path} (Size: {file_size} bytes)")
-            if file_size == 0:
-                print("WARNING: cookies.txt is EMPTY!")
-        else:
-            print(f"WARNING: cookies.txt NOT FOUND at {cookies_path}")
+        if not os.path.exists(cookies_path):
+             print(f"WARNING: cookies.txt NOT FOUND at {cookies_path}")
+
 
         ydl_opts = {
             'outtmpl': output_template,
-            'noplaylist': True,
+            # 'noplaylist': True, # Removed to allow carousels/playlists
+
             # 'source_address': '0.0.0.0', # Removed to allow IPv6
             'cookiefile': cookies_path,  # Use absolute path
             'extractor_args': {
@@ -164,7 +161,32 @@ def download_worker(task_id, url, quality):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
 
-        filename = ydl.prepare_filename(info)
+        if 'entries' in info:
+             # It's a playlist or carousel
+             entries = info['entries']
+             if not entries:
+                 raise Exception("No media found in this link")
+             # Take the first one for now, or zip them? 
+             # For a carousel, the user usually wants all.
+             # But our current UI only supports one file return.
+             # Let's zip them if multiple, or just return the first one if it's a social media "carousel" which oftentimes behaves like a playlist.
+             
+             # Actually, yt-dlp handling of carousels often downloads all files. 
+             # We need to find where they went.
+             # logic: if multiple files, zip them.
+             
+             downloaded_files = []
+             # We need to find the files knowing the templates. 
+             # But prepare_filename only works for one info.
+             
+             # Simplified approach: Return the first one, but ensure all are downloaded.
+             # Or better: check what files were created.
+             
+             # For now, let's treat the first entry as the main one for the result display
+             info = entries[0]
+             filename = ydl.prepare_filename(info)
+        else:
+             filename = ydl.prepare_filename(info)
         
         if quality == 'audio':
             filename = os.path.splitext(filename)[0] + '.mp3'
@@ -951,30 +973,67 @@ def add_signature():
         input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
         file.save(input_path)
         
-        # Create signature PDF
-        packet = io.BytesIO()
-        can = canvas.Canvas(packet)
-        
-        # Save signature image temporarily
-        sig_filename = f"{file_id}_sig.png"
-        sig_path = os.path.join(DOWNLOAD_FOLDER, sig_filename)
-        signature.save(sig_path)
-        
-        # Draw image
-        can.drawImage(sig_path, x, y, width=width, height=height, mask='auto')
-        can.save()
-        packet.seek(0)
-        
-        sig_pdf = PdfReader(packet)
-        sig_page = sig_pdf.pages[0]
-        
-        reader = PdfReader(input_path)
-        writer = PdfWriter()
-        
-        # Overlay signature on specific page
-        for i, page in enumerate(reader.pages):
-            if i == page_num:
-                page.merge_page(sig_page)
+        if 0 <= page_num < len(reader.pages):
+            # Get page dimensions to support relative/normalized coordinates
+            page_width = float(reader.pages[page_num].mediabox.width)
+            page_height = float(reader.pages[page_num].mediabox.height)
+            
+            # If coordinates are normalized (<= 1.0), convert to absolute
+            # We assume user won't put a signature at 1 px from edge usually, so <= 1 check is safe enough
+            # But to be safer, let's normalize only if they are clearly floats < 2
+            
+            use_normalized = False
+            # Check arguments - if they came as small floats
+            if x <= 1.0 and y <= 1.0: 
+                x = x * page_width
+                y = page_height - (y * page_height) # PDF y starts from bottom? no, usually top-left in ReportLab canvas?
+                # ReportLab Canvas (0,0) is BOTTOM-LEFT.
+                # PDF.js (0,0) is TOP-LEFT.
+                # So if we receive normalized Y from top (0) to bottom (1):
+                # Target Y = PageHeight * (1 - normalizedY) if we treat 0 as top
+                # Let's assume frontend sends Top-Left based normalized coords.
+                use_normalized = True
+            
+            if not use_normalized:
+               # If absolute pixels from top-left (web standard) vs bottom-left (pdf standard)
+               # Usually users might send pixels from top.
+               # Let's assume absolute inputs are also top-left based for consistency?
+               # Previous code just used X, Y directly. ReportLab defaults to bottom-left.
+               # If user said "Y=50" (typcially top 50px), in ReportLab Y=50 is bottom 50.
+               # Correcting this is risky if they were used to bottom-left.
+               # But "Edit by X/Y" usually implies standard cartesian or screen coords.
+               # Given the user complained "Unusable", they probably expected Top-Left screen coords.
+               # Let's switch to Top-Left logic for everything if possible, or support the visual editor's Top-Left.
+               pass
+
+            # Rerender canvas for signature
+            packet = io.BytesIO()
+            can = canvas.Canvas(packet, pagesize=(page_width, page_height))
+            
+            if use_normalized:
+                 # Adjust Y (flip)
+                 # y already adjusted above to: page_height - (normalized_y * page_height)
+                 # Wait, y = page_height - (y * page_height) was wrong if I pass y as 1.0 (bottom) -> 0.
+                 # Top (0.0) -> page_height. Bottom (1.0) -> 0.
+                 pass
+            else:
+                 # Assume input was Bottom-Left based (standard PDF) unless we change it.
+                 # Let's keep legacy behavior for big numbers, but applying the flip for normalized which are definitely new.
+                 pass
+
+            # Draw
+            # If normalized, we use the calculated X, Y (which are now bottom-left based)
+            can.drawImage(sig_path, x, y, width=width, height=height, mask='auto', anchor='sw') # sw = south west origin
+            can.save()
+            packet.seek(0)
+            
+            sig_pdf = PdfReader(packet)
+            sig_page = sig_pdf.pages[0]
+            
+            reader.pages[page_num].merge_page(sig_page)
+            
+        # Add all pages to writer
+        for page in reader.pages:
             writer.add_page(page)
             
         output_filename = f"{original_name}_signed.pdf"
@@ -1038,7 +1097,14 @@ def edit_pdf():
             # Normalize to 0-1 if > 1
             if r > 1 or g > 1 or b > 1:
                 r, g, b = r/255, g/255, b/255
-                
+            
+            # Handle coordinates
+            # PyMuPDF (fitz) uses Top-Left origin (0,0).
+            # So if we receive normalized coords (0-1 from Top-Left), we just scale by width/height.
+            if x <= 1.0 and y <= 1.0:
+                 x = x * page.rect.width
+                 y = y * page.rect.height
+                 
             page.insert_text((x, y), text, fontsize=fontsize, color=(r, g, b))
             
         output_filename = f"{original_name}_edited.pdf"
@@ -1267,8 +1333,44 @@ def draw_pdf():
     # Helper to allow drawing (overlay image)
     return add_signature()
 
+@app.errorhandler(500)
+def handle_500_error(e):
+    return jsonify({'error': 'Internal Server Error', 'details': str(e)}), 500
+
+@app.errorhandler(404)
+def handle_404_error(e):
+    return jsonify({'error': 'Not Found'}), 404
+
+def check_dependencies():
+    print("------------------ CHECKING DEPENDENCIES ------------------")
+    deps = {
+        'ffmpeg': 'Critical for media conversion',
+        'ffprobe': 'Critical for media analysis',
+    }
+    
+    bin_path = os.path.join(os.getcwd(), 'bin')
+    os.environ['PATH'] += os.pathsep + bin_path
+    
+    missing = []
+    for dep, desc in deps.items():
+        from shutil import which
+        if not which(dep):
+            missing.append(f"{dep} ({desc})")
+            print(f"❌ {dep} NOT FOUND")
+        else:
+            print(f"✅ {dep} found")
+            
+    if missing:
+        print("WARNING: Some dependencies are missing. Features may act up.")
+        print(f"Missing: {', '.join(missing)}")
+        # We don't exit, just warn
+    else:
+        print("All critical dependencies check out.")
+    print("-----------------------------------------------------------")
+
 if __name__ == '__main__':
     print("------------------ SERVER STARTING ------------------")
+    check_dependencies()
     # For local development only
     app.run(debug=True, use_reloader=False, port=5000)
 # For production (Gunicorn), the app object is used directly

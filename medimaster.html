@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script>window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';</script>
     <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <body>
@@ -581,22 +583,33 @@
                 <div class="status-area hidden"></div>
             </div>
 
-            <!-- Edit PDF (Simplified) -->
+            <!-- Edit PDF (Visual) -->
             <div id="tpl-edit-pdf">
-                <div class="drop-zone pdf-drop">
+                <!-- Initial Drop Zone -->
+                <div class="drop-zone pdf-drop" id="visual-pdf-drop">
                     <i class="fa-solid fa-pen-to-square"></i>
                     <p>Glissez votre PDF à éditer</p>
-                    <input type="file" accept=".pdf" hidden>
+                    <input type="file" accept=".pdf" hidden id="visual-pdf-input">
                 </div>
-                <div class="options-grid">
-                    <div class="input-group" style="width: 100%;">
-                        <label>Texte à ajouter sur la première page</label>
-                        <input type="text" placeholder="Ex: Annotation, Note..." class="annot-text">
+                
+                <!-- Visual Editor (Hidden initially) -->
+                <div id="visual-editor-ui" class="hidden" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                    <div class="visual-toolbar" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px;">
+                        <button class="nav-btn active" id="add-text-tool" style="padding: 5px 15px; font-size: 0.9rem;">
+                            <i class="fa-solid fa-font"></i> Texte
+                        </button>
+                        <input type="color" id="editor-color" value="#000000" style="height: 30px; width: 40px; border: none; border-radius: 5px; cursor: pointer;">
+                        <input type="number" id="editor-size" value="16" min="8" max="72" style="width: 60px; padding: 5px; border-radius: 5px; border: none;">
+                        <button class="action-btn" id="save-visual-pdf" style="padding: 5px 20px; width: auto; font-size: 0.9rem;">
+                             <i class="fa-solid fa-floppy-disk"></i> Sauvegarder
+                        </button>
+                    </div>
+                    
+                    <div id="canvas-container" style="position: relative; border: 1px solid var(--glass-border); box-shadow: 0 4px 15px rgba(0,0,0,0.3); overflow: hidden; max-width: 100%;">
+                        <canvas id="the-canvas"></canvas>
+                        <!-- Text elements will be absolute formatted here -->
                     </div>
                 </div>
-                <button class="action-btn process-btn">
-                    <span>Ajouter Annotation</span> <i class="fa-solid fa-font"></i>
-                </button>
                 <div class="status-area hidden"></div>
             </div>
 

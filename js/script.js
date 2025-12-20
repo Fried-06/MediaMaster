@@ -142,6 +142,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // --- MOBILE MENU LOGIC ---
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const navLinks = document.getElementById('nav-links');
+
+    if (mobileMenuBtn && navLinks) {
+        mobileMenuBtn.addEventListener('click', () => {
+            navLinks.classList.toggle('mobile-active');
+            // Toggle icon
+            const icon = mobileMenuBtn.querySelector('i');
+            if (navLinks.classList.contains('mobile-active')) {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            } else {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            }
+        });
+
+        // Close menu when clicking a link
+        navLinks.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                navLinks.classList.remove('mobile-active');
+                const icon = mobileMenuBtn.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+            });
+        });
+    }
+
     // --- DOWNLOAD LOGIC ---
     const downloadBtn = document.getElementById('download-btn');
     const downloadStatus = document.getElementById('download-status');
@@ -250,18 +281,38 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTaskId = null;
     let pollInterval = null;
 
-    const resetDownloadState = () => {
-        if (pollInterval) clearInterval(pollInterval);
-        pollInterval = null;
-        currentTaskId = null;
-        downloadBtn.disabled = false;
-        downloadBtn.style.opacity = '1';
+const resetDownloadState = () => {
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = null;
+    currentTaskId = null;
+    downloadBtn.disabled = false;
+    downloadBtn.style.opacity = '1';
+    
+    // Reset UI
+    if (urlInput) urlInput.value = '';
+    if (clearBtn) clearBtn.classList.add('hidden');
+    if (platformBadge) updatePlatformBadge(''); // Reset badge
+    
+    if (downloadStatus) {
+        // We wait a bit before hiding it to let user see "Finished" if valid
+        // But for reset, we might want to just hide it or reset content
+        // The user asked to "Hide bar" at end.
         
-        const cancelBtn = document.getElementById('cancel-btn');
-        if (cancelBtn) {
-            cancelBtn.classList.add('hidden');
-        }
-    };
+        // Reset bar width
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        if (progressBar) progressBar.style.width = '0%';
+        if (progressText) progressText.innerText = '0%';
+        
+        // Hide container
+        downloadStatus.classList.add('hidden');
+    }
+
+    const cancelBtn = document.getElementById('cancel-btn');
+    if (cancelBtn) {
+        cancelBtn.classList.add('hidden');
+    }
+};
 
     document.getElementById('cancel-btn').addEventListener('click', async () => {
         if (currentTaskId) {
@@ -922,6 +973,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize logic for specific tool
     const initToolLogic = (toolKey, config) => {
+        // Special Visual Editor for 'edit-pdf'
+        if (toolKey === 'edit-pdf') {
+            setupVisualEditor(config);
+            return;
+        }
+
         const dropZone = toolContentArea.querySelector('.drop-zone');
         const fileInput = toolContentArea.querySelector('input[type="file"]');
         const processBtn = toolContentArea.querySelector('.process-btn');
@@ -1066,5 +1123,185 @@ document.addEventListener('DOMContentLoaded', () => {
         element.innerHTML = message;
         element.className = `status-area ${type}`;
         element.classList.remove('hidden');
+    }
+
+    // --- VISUAL PDF EDITOR LOGIC ---
+    function setupVisualEditor(config) {
+        const ui = toolContentArea.querySelector('#visual-editor-ui');
+        const dropZone = toolContentArea.querySelector('#visual-pdf-drop');
+        const fileInput = toolContentArea.querySelector('#visual-pdf-input');
+        const canvas = toolContentArea.querySelector('#the-canvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = toolContentArea.querySelector('#canvas-container');
+        const addTextBtn = toolContentArea.querySelector('#add-text-tool');
+        const saveBtn = toolContentArea.querySelector('#save-visual-pdf');
+        const statusArea = toolContentArea.querySelector('.status-area');
+        
+        let currentPdf = null;
+        let pdfFile = null;
+        let activeTextElement = null;
+        let scale = 1.0;
+
+        // Reset UI
+        ui.classList.add('hidden');
+        dropZone.classList.remove('hidden');
+        dropZone.querySelector('p').textContent = 'Glissez votre PDF à éditer';
+        
+        // Handle File Selection
+        dropZone.onclick = () => fileInput.click();
+        fileInput.onchange = async (e) => {
+            if (e.target.files[0]) {
+                const file = e.target.files[0];
+                if (file.type !== 'application/pdf') {
+                    alert('Ce n\'est pas un PDF !');
+                    return;
+                }
+                pdfFile = file;
+                dropZone.classList.add('hidden');
+                ui.classList.remove('hidden');
+                statusArea.classList.add('hidden');
+                
+                // Render PDF
+                const arrayBuffer = await file.arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument(arrayBuffer);
+                currentPdf = await loadingTask.promise;
+                
+                const page = await currentPdf.getPage(1);
+                const viewport = page.getViewport({ scale: 1.0 });
+                
+                // Scale canvas to fit container width if needed
+                const containerWidth = toolContentArea.clientWidth - 40; // padding
+                scale = containerWidth < viewport.width ? containerWidth / viewport.width : 1.0;
+                const scaledViewport = page.getViewport({ scale: scale });
+
+                canvas.height = scaledViewport.height;
+                canvas.width = scaledViewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: scaledViewport
+                };
+                await page.render(renderContext).promise;
+            }
+        };
+
+        // Add Text Tool
+        addTextBtn.onclick = () => {
+            if (activeTextElement) return; // Only one text for now (backend limitation)
+            
+            const textEl = document.createElement('div');
+            textEl.contentEditable = true;
+            textEl.innerText = "Double-cliquez pour éditer";
+            textEl.style.position = 'absolute';
+            textEl.style.left = '50px';
+            textEl.style.top = '50px';
+            textEl.style.color = document.getElementById('editor-color').value;
+            textEl.style.fontSize = document.getElementById('editor-size').value + 'px';
+            textEl.style.fontFamily = 'Arial, sans-serif';
+            textEl.style.background = 'rgba(255, 255, 255, 0.5)';
+            textEl.style.padding = '5px';
+            textEl.style.border = '1px dashed var(--primary)';
+            textEl.style.cursor = 'move';
+            textEl.style.zIndex = 100;
+            
+            canvasContainer.appendChild(textEl);
+            activeTextElement = textEl;
+            
+            // Drag Logic
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            textEl.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = textEl.offsetLeft;
+                initialTop = textEl.offsetTop;
+                textEl.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const dx = e.clientX - startX;
+                    const dy = e.clientY - startY;
+                    textEl.style.left = `${initialLeft + dx}px`;
+                    textEl.style.top = `${initialTop + dy}px`;
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+                if(textEl) textEl.style.cursor = 'move';
+            });
+            
+            // Styling updates
+            document.getElementById('editor-color').onchange = (e) => textEl.style.color = e.target.value;
+            document.getElementById('editor-size').onchange = (e) => textEl.style.fontSize = e.target.value + 'px';
+        };
+
+        // Save Action
+        saveBtn.onclick = async () => {
+            if (!activeTextElement) {
+                alert('Ajoutez du texte d\'abord !');
+                return;
+            }
+            
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';
+            
+            // Calculate normalized coordinates
+            // Backend expects Top-Left logic now (based on my update) or I send normalized and it handles it.
+            // I updated backend to accept normalized.
+            // Normalized X = offsetLeft / canvasWidth
+            const normX = activeTextElement.offsetLeft / canvas.width;
+            const normY = activeTextElement.offsetTop / canvas.height;
+            
+            const formData = new FormData();
+            formData.append('file', pdfFile);
+            formData.append('text', activeTextElement.innerText);
+            formData.append('x', normX);
+            formData.append('y', normY);
+            formData.append('page', 0); // Always page 1 (index 0)
+            
+            // Color conversion hex to r,g,b
+            const hex = activeTextElement.style.color || '#000000'; // might be rgb(r, g, b)
+            // If it returns rgb string, we pass it directly? Backend parser expects "r,g,b".
+            // Browser style.color returns "rgb(0, 0, 0)".
+            // Let's regex it
+            let colorStr = "0,0,0";
+            if (hex.startsWith('rgb')) {
+                 const rgb = hex.match(/\d+/g);
+                 if (rgb) colorStr = rgb.join(',');
+            } else {
+                 // Convert hex to rgb
+                 // Simplified: backend fails if bad format?
+                 // Let's assume input color picker gives hex, but style.color converts to rgb.
+                 // We can use the input value directly
+                 const inputHex = document.getElementById('editor-color').value;
+                 const r = parseInt(inputHex.substr(1,2), 16);
+                 const g = parseInt(inputHex.substr(3,2), 16);
+                 const b = parseInt(inputHex.substr(5,2), 16);
+                 colorStr = `${r},${g},${b}`;
+            }
+            formData.append('color', colorStr);
+            formData.append('fontsize', parseInt(activeTextElement.style.fontSize));
+            
+            try {
+                const response = await fetch('/api/edit-pdf', { method: 'POST', body: formData });
+                const data = await response.json();
+                
+                if (data.success) {
+                    let msg = `Succès ! <a href="${data.download_url}" class="download-link" download>Télécharger le fichier</a>`;
+                    showStatus(statusArea, msg, 'success');
+                } else {
+                    showStatus(statusArea, `Erreur: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                 showStatus(statusArea, `Erreur: ${err.message}`, 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Sauvegarder';
+            }
+        };
     }
 });

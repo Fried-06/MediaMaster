@@ -96,6 +96,10 @@ body {
   overflow-x: hidden;
   position: relative;
   transition: background-color 0.5s ease, color 0.5s ease;
+  width: 100%;
+}
+html {
+    overflow-x: hidden;
 }
 
 .background-glow {
@@ -551,14 +555,83 @@ select option {
 }
 
 /* Responsive */
-@media (max-width: 600px) {
-  .options-grid {
-    grid-template-columns: 1fr;
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+      padding: 0 1rem;
+      margin: 2rem auto;
+  }
+  
+  .glass-panel {
+      padding: 1.5rem;
   }
 
+  .options-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .bureautique-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 10px;
+  }
+  
   .hero-text h1 {
     font-size: 2rem;
   }
+  
+  /* Mobile Menu */
+  .mobile-menu-btn {
+      display: block !important;
+      background: transparent;
+      border: none;
+      color: var(--primary);
+      font-size: 1.5rem;
+      cursor: pointer;
+  }
+
+  .nav-links {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(20px);
+      flex-direction: column;
+      padding: 2rem;
+      border-radius: 0 0 20px 20px;
+      border-bottom: 1px solid var(--glass-border);
+  }
+
+  .nav-links.mobile-active {
+      display: flex;
+  }
+  
+  .nav-btn {
+      width: 100%;
+      justify-content: center;
+      padding: 1rem;
+  }
+  
+  .theme-selector-container {
+      margin: 1rem 0 0 0;
+      border-left: none;
+      border-top: 1px solid var(--glass-border);
+      padding: 1rem 0 0 0;
+      width: 100%;
+      text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+    .bureautique-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .logo {
+        font-size: 1.2rem;
+    }
 }
 
 /* Utility Classes - Must be at the end */

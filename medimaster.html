@@ -27,7 +27,7 @@
             </span>
         </div>
         
-        <button id="mobile-menu-btn" class="mobile-menu-btn" style="display: none;">
+        <button id="mobile-menu-btn" class="mobile-menu-btn">
             <i class="fa-solid fa-bars"></i>
         </button>
 
@@ -562,6 +562,16 @@
                     <i class="fa-solid fa-signature"></i>
                     <p>2. Glissez l'image de votre signature (PNG transparent)</p>
                     <input type="file" accept="image/*" hidden class="sig-input">
+                </div>
+                <div id="signature-editor-ui" class="hidden" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                    <div class="visual-toolbar" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px;">
+                        <button class="action-btn" id="save-signature-pdf" style="padding: 5px 20px; width: auto; font-size: 0.9rem;">
+                             <i class="fa-solid fa-floppy-disk"></i> Sauvegarder
+                        </button>
+                    </div>
+                    <div id="sig-canvas-container" style="position: relative; border: 1px solid var(--glass-border); box-shadow: 0 4px 15px rgba(0,0,0,0.3); overflow: hidden; max-width: 100%;">
+                        <canvas id="sig-canvas"></canvas>
+                    </div>
                 </div>
                 <div class="options-grid">
                     <div class="input-group">

@@ -973,6 +973,10 @@ const resetDownloadState = () => {
 
     // Initialize logic for specific tool
     const initToolLogic = (toolKey, config) => {
+        if (toolKey === 'add-signature') {
+            setupSignatureTool(config);
+            return;
+        }
         // Special Visual Editor for 'edit-pdf'
         if (toolKey === 'edit-pdf') {
             setupVisualEditor(config);
@@ -1303,5 +1307,125 @@ const resetDownloadState = () => {
                 saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Sauvegarder';
             }
         };
+    }
+
+    function setupSignatureTool(config) {
+        const ui = toolContentArea.querySelector('#signature-editor-ui');
+        const pdfDrop = toolContentArea.querySelector('.pdf-drop');
+        const sigDrop = toolContentArea.querySelector('.sig-drop');
+        const pdfInput = toolContentArea.querySelector('.pdf-input');
+        const sigInput = toolContentArea.querySelector('.sig-input');
+        const canvas = toolContentArea.querySelector('#sig-canvas');
+        const ctx = canvas.getContext('2d');
+        const container = toolContentArea.querySelector('#sig-canvas-container');
+        const saveBtn = toolContentArea.querySelector('#save-signature-pdf');
+        const statusArea = toolContentArea.querySelector('.status-area');
+        const pageInput = toolContentArea.querySelector('.page-num');
+        let currentPdf = null;
+        let pdfFile = null;
+        let sigFile = null;
+        let scale = 1.0;
+        let sigEl = null;
+
+        if (pdfDrop && pdfInput) pdfDrop.onclick = () => pdfInput.click();
+        if (sigDrop && sigInput) sigDrop.onclick = () => sigInput.click();
+
+        if (pdfInput) {
+            pdfInput.onchange = async (e) => {
+                if (!e.target.files[0]) return;
+                pdfFile = e.target.files[0];
+                ui.classList.remove('hidden');
+                statusArea.classList.add('hidden');
+                const arrayBuffer = await pdfFile.arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument(arrayBuffer);
+                currentPdf = await loadingTask.promise;
+                const pageNum = parseInt(pageInput?.value || 0) + 1;
+                const page = await currentPdf.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 1.0 });
+                const containerWidth = toolContentArea.clientWidth - 40;
+                scale = containerWidth < viewport.width ? containerWidth / viewport.width : 1.0;
+                const scaledViewport = page.getViewport({ scale });
+                canvas.height = scaledViewport.height;
+                canvas.width = scaledViewport.width;
+                await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+            };
+        }
+
+        if (sigInput) {
+            sigInput.onchange = (e) => {
+                if (!e.target.files[0]) return;
+                sigFile = e.target.files[0];
+                const imgURL = URL.createObjectURL(sigFile);
+                if (sigEl) sigEl.remove();
+                sigEl = document.createElement('img');
+                sigEl.src = imgURL;
+                sigEl.style.position = 'absolute';
+                sigEl.style.left = '50px';
+                sigEl.style.top = '50px';
+                sigEl.style.width = '150px';
+                sigEl.style.height = 'auto';
+                sigEl.style.cursor = 'move';
+                sigEl.style.zIndex = '200';
+                container.appendChild(sigEl);
+                let isDragging = false, startX, startY, initialLeft, initialTop;
+                sigEl.addEventListener('mousedown', (ev) => {
+                    isDragging = true;
+                    startX = ev.clientX;
+                    startY = ev.clientY;
+                    initialLeft = sigEl.offsetLeft;
+                    initialTop = sigEl.offsetTop;
+                    sigEl.style.cursor = 'grabbing';
+                });
+                window.addEventListener('mousemove', (ev) => {
+                    if (!isDragging) return;
+                    const dx = ev.clientX - startX;
+                    const dy = ev.clientY - startY;
+                    sigEl.style.left = `${initialLeft + dx}px`;
+                    sigEl.style.top = `${initialTop + dy}px`;
+                });
+                window.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    sigEl.style.cursor = 'move';
+                });
+            };
+        }
+
+        if (saveBtn) {
+            saveBtn.onclick = async () => {
+                if (!pdfFile || !sigFile || !sigEl) {
+                    alert('Ajoutez un PDF et une signature');
+                    return;
+                }
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';
+                const normX = sigEl.offsetLeft / canvas.width;
+                const normY = sigEl.offsetTop / canvas.height;
+                const normW = sigEl.clientWidth / canvas.width;
+                const normH = (sigEl.clientHeight || sigEl.clientWidth) / canvas.height;
+                const formData = new FormData();
+                formData.append('file', pdfFile);
+                formData.append('signature', sigFile);
+                formData.append('x', normX);
+                formData.append('y', normY);
+                formData.append('width', normW);
+                formData.append('height', normH);
+                formData.append('page', parseInt(pageInput?.value || 0));
+                try {
+                    const resp = await fetch('/api/add-signature', { method: 'POST', body: formData });
+                    const data = await resp.json();
+                    if (data.success) {
+                        const msg = `Succès ! <a href="${data.download_url}" class="download-link" download>Télécharger le fichier</a>`;
+                        showStatus(statusArea, msg, 'success');
+                    } else {
+                        showStatus(statusArea, `Erreur: ${data.error}`, 'error');
+                    }
+                } catch (err) {
+                    showStatus(statusArea, `Erreur: ${err.message}`, 'error');
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Sauvegarder';
+                }
+            };
+        }
     }
 });

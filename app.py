@@ -43,6 +43,10 @@ if not os.path.exists(DOWNLOAD_FOLDER):
 
 app.config['UPLOAD_FOLDER'] = DOWNLOAD_FOLDER
 
+FFMPEG_BIN = os.path.join(os.getcwd(), 'bin', 'ffmpeg.exe') if os.name == 'nt' else os.path.join(os.getcwd(), 'bin', 'ffmpeg')
+if os.path.exists(FFMPEG_BIN):
+    os.environ['IMAGEIO_FFMPEG_EXE'] = FFMPEG_BIN
+
 @app.route('/')
 def index():
     return send_from_directory('.', 'medimaster.html')
@@ -93,8 +97,7 @@ def download_worker(task_id, url, quality):
             elif d['status'] == 'finished':
                 downloads[task_id]['progress'] = 100
 
-        # Generate a unique filename
-        output_template = os.path.join(DOWNLOAD_FOLDER, f'{task_id}.%(ext)s')
+        output_template = os.path.join(DOWNLOAD_FOLDER, '%(title).200s-%(id)s.%(ext)s')
 
         # Check for local ffmpeg
         ffmpeg_path = os.path.join(os.getcwd(), 'bin', 'ffmpeg.exe')
@@ -154,68 +157,56 @@ def download_worker(task_id, url, quality):
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
+                if 'entries' in info and info['entries']:
+                    entries = info['entries']
+                    files = []
+                    for entry in entries:
+                        fpath = ydl.prepare_filename(entry)
+                        if quality == 'audio':
+                            fpath = os.path.splitext(fpath)[0] + '.mp3'
+                        if os.path.exists(fpath):
+                            files.append(fpath)
+                    if not files:
+                        raise Exception('No media files downloaded')
+                    import zipfile, re
+                    title = info.get('title') or 'download'
+                    title = re.sub(r'[<>:"/\\|?*]', '', title)
+                    zip_name = f"{title}.zip"
+                    zip_path = os.path.join(DOWNLOAD_FOLDER, zip_name)
+                    with zipfile.ZipFile(zip_path, 'w') as zf:
+                        for f in files:
+                            zf.write(f, os.path.basename(f))
+                    downloads[task_id]['status'] = 'completed'
+                    downloads[task_id]['result'] = {
+                        'filename': zip_name,
+                        'title': info.get('title', 'Unknown Title'),
+                        'download_url': f'/files/{zip_name}'
+                    }
+                else:
+                    filename = ydl.prepare_filename(info)
+                    if quality == 'audio':
+                        filename = os.path.splitext(filename)[0] + '.mp3'
+                    if not os.path.exists(filename):
+                        raise Exception('Downloaded file not found')
+                    downloads[task_id]['status'] = 'completed'
+                    downloads[task_id]['result'] = {
+                        'filename': os.path.basename(filename),
+                        'title': info.get('title', 'Unknown Title'),
+                        'download_url': f"/files/{os.path.basename(filename)}"
+                    }
         except yt_dlp.utils.DownloadError as e:
-            # If format not available or other error, try fallback to 'best'
-            print(f"Download failed with initial options: {e}. Retrying with format='best'...")
             ydl_opts['format'] = 'best'
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-
-        if 'entries' in info:
-             # It's a playlist or carousel
-             entries = info['entries']
-             if not entries:
-                 raise Exception("No media found in this link")
-             # Take the first one for now, or zip them? 
-             # For a carousel, the user usually wants all.
-             # But our current UI only supports one file return.
-             # Let's zip them if multiple, or just return the first one if it's a social media "carousel" which oftentimes behaves like a playlist.
-             
-             # Actually, yt-dlp handling of carousels often downloads all files. 
-             # We need to find where they went.
-             # logic: if multiple files, zip them.
-             
-             downloaded_files = []
-             # We need to find the files knowing the templates. 
-             # But prepare_filename only works for one info.
-             
-             # Simplified approach: Return the first one, but ensure all are downloaded.
-             # Or better: check what files were created.
-             
-             # For now, let's treat the first entry as the main one for the result display
-             info = entries[0]
-             filename = ydl.prepare_filename(info)
-        else:
-             filename = ydl.prepare_filename(info)
-        
-        if quality == 'audio':
-            filename = os.path.splitext(filename)[0] + '.mp3'
-        
-        # Rename to title
-        import re
-        def sanitize_filename(name):
-            return re.sub(r'[<>:"/\\|?*]', '', name)
-
-        safe_title = sanitize_filename(info.get('title', 'video'))
-        ext = os.path.splitext(filename)[1]
-        new_filename = f"{safe_title}{ext}"
-        new_path = os.path.join(DOWNLOAD_FOLDER, new_filename)
-        
-        # Handle duplicates
-        counter = 1
-        while os.path.exists(new_path):
-            new_filename = f"{safe_title} ({counter}){ext}"
-            new_path = os.path.join(DOWNLOAD_FOLDER, new_filename)
-            counter += 1
-        
-        os.rename(filename, new_path)
-        
-        downloads[task_id]['status'] = 'completed'
-        downloads[task_id]['result'] = {
-            'filename': new_filename,
-            'title': info.get('title', 'Unknown Title'),
-            'download_url': f'/files/{new_filename}'
-        }
+                filename = ydl.prepare_filename(info)
+                if quality == 'audio':
+                    filename = os.path.splitext(filename)[0] + '.mp3'
+                downloads[task_id]['status'] = 'completed'
+                downloads[task_id]['result'] = {
+                    'filename': os.path.basename(filename),
+                    'title': info.get('title', 'Unknown Title'),
+                    'download_url': f"/files/{os.path.basename(filename)}"
+                }
 
     except Exception as e:
         if str(e) == "Download cancelled by user":
@@ -318,6 +309,7 @@ def convert_video():
         return jsonify({'error': 'No file selected'}), 400
 
     try:
+        from moviepy.editor import VideoFileClip
         file_id = str(uuid.uuid4())
         input_path = os.path.join(DOWNLOAD_FOLDER, f"{file_id}_{file.filename}")
         file.save(input_path)
@@ -325,7 +317,6 @@ def convert_video():
         output_filename = f"{file_id}.mp3"
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
 
-        # Convert using MoviePy
         video = VideoFileClip(input_path)
         video.audio.write_audiofile(output_path)
         video.close()
@@ -418,9 +409,9 @@ def compress_video():
             crf = 28
             scale = "1280:-2"
         
-        # Run ffmpeg compression
+        ffmpeg_bin = FFMPEG_BIN if os.path.exists(FFMPEG_BIN) else 'ffmpeg'
         cmd = [
-            'ffmpeg', '-y', '-i', input_path,
+            ffmpeg_bin, '-y', '-i', input_path,
             '-vf', f'scale={scale}',
             '-c:v', 'libx264', '-crf', str(crf),
             '-c:a', 'aac', '-b:a', '128k',
@@ -440,7 +431,7 @@ def compress_video():
         })
         
     except subprocess.CalledProcessError as e:
-        return jsonify({'error': f'Compression failed: {e.stderr.decode()}'}), 500
+        return jsonify({'error': f"Compression failed: {e.stderr.decode(errors='ignore')}"}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -490,10 +481,10 @@ def remove_watermark():
     file = request.files['file']
     
     # Get mask coordinates from form data (x, y, width, height)
-    x = int(request.form.get('x', 0))
-    y = int(request.form.get('y', 0))
-    width = int(request.form.get('width', 100))
-    height = int(request.form.get('height', 50))
+    x = float(request.form.get('x', 0))
+    y = float(request.form.get('y', 0))
+    width = float(request.form.get('width', 100))
+    height = float(request.form.get('height', 50))
     
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
@@ -509,9 +500,23 @@ def remove_watermark():
         if img is None:
             return jsonify({'error': 'Could not read image'}), 400
         
-        # Create mask for inpainting
+        ih, iw = img.shape[:2]
+        if x <= 1.0 and y <= 1.0:
+            x = int(x * iw)
+            y = int(y * ih)
+        if width <= 1.0 and height <= 1.0:
+            width = int(width * iw)
+            height = int(height * ih)
+        x = int(x)
+        y = int(y)
+        width = int(width)
+        height = int(height)
+        x = max(0, min(iw - 1, x))
+        y = max(0, min(ih - 1, y))
+        x2 = max(0, min(iw, x + width))
+        y2 = max(0, min(ih, y + height))
         mask = np.zeros(img.shape[:2], dtype=np.uint8)
-        mask[y:y+height, x:x+width] = 255
+        mask[y:y2, x:x2] = 255
         
         # Inpaint to remove watermark
         result = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
@@ -945,116 +950,66 @@ def add_watermark():
 def add_signature():
     if 'file' not in request.files or 'signature' not in request.files:
         return jsonify({'error': 'File or signature missing'}), 400
-        
     file = request.files['file']
     signature = request.files['signature']
-    
-    # Coords (normalized 0-1 or pixels?) Let's use pixels for now, defaulted to bottom right
-    x = int(request.form.get('x', 400))
-    y = int(request.form.get('y', 50))
-    width = int(request.form.get('width', 150))
-    height = int(request.form.get('height', 50))
-    page_num = int(request.form.get('page', 0)) # 0-indexed
-    
+    x = float(request.form.get('x', 400))
+    y = float(request.form.get('y', 50))
+    width = float(request.form.get('width', 150))
+    height = float(request.form.get('height', 50))
+    page_num = int(request.form.get('page', 0))
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
-        
     try:
         from PyPDF2 import PdfReader, PdfWriter
         from reportlab.pdfgen import canvas
         from PIL import Image
         import io
-        
         original_name = os.path.splitext(secure_filename(file.filename))[0]
-        
-        # Save input
         file_id = str(uuid.uuid4())
         input_filename = f"{file_id}.pdf"
         input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
         file.save(input_path)
-        
-        if 0 <= page_num < len(reader.pages):
-            # Get page dimensions to support relative/normalized coordinates
-            page_width = float(reader.pages[page_num].mediabox.width)
-            page_height = float(reader.pages[page_num].mediabox.height)
-            
-            # If coordinates are normalized (<= 1.0), convert to absolute
-            # We assume user won't put a signature at 1 px from edge usually, so <= 1 check is safe enough
-            # But to be safer, let's normalize only if they are clearly floats < 2
-            
-            use_normalized = False
-            # Check arguments - if they came as small floats
-            if x <= 1.0 and y <= 1.0: 
-                x = x * page_width
-                y = page_height - (y * page_height) # PDF y starts from bottom? no, usually top-left in ReportLab canvas?
-                # ReportLab Canvas (0,0) is BOTTOM-LEFT.
-                # PDF.js (0,0) is TOP-LEFT.
-                # So if we receive normalized Y from top (0) to bottom (1):
-                # Target Y = PageHeight * (1 - normalizedY) if we treat 0 as top
-                # Let's assume frontend sends Top-Left based normalized coords.
-                use_normalized = True
-            
-            if not use_normalized:
-               # If absolute pixels from top-left (web standard) vs bottom-left (pdf standard)
-               # Usually users might send pixels from top.
-               # Let's assume absolute inputs are also top-left based for consistency?
-               # Previous code just used X, Y directly. ReportLab defaults to bottom-left.
-               # If user said "Y=50" (typcially top 50px), in ReportLab Y=50 is bottom 50.
-               # Correcting this is risky if they were used to bottom-left.
-               # But "Edit by X/Y" usually implies standard cartesian or screen coords.
-               # Given the user complained "Unusable", they probably expected Top-Left screen coords.
-               # Let's switch to Top-Left logic for everything if possible, or support the visual editor's Top-Left.
-               pass
-
-            # Rerender canvas for signature
-            packet = io.BytesIO()
-            can = canvas.Canvas(packet, pagesize=(page_width, page_height))
-            
-            if use_normalized:
-                 # Adjust Y (flip)
-                 # y already adjusted above to: page_height - (normalized_y * page_height)
-                 # Wait, y = page_height - (y * page_height) was wrong if I pass y as 1.0 (bottom) -> 0.
-                 # Top (0.0) -> page_height. Bottom (1.0) -> 0.
-                 pass
-            else:
-                 # Assume input was Bottom-Left based (standard PDF) unless we change it.
-                 # Let's keep legacy behavior for big numbers, but applying the flip for normalized which are definitely new.
-                 pass
-
-            # Draw
-            # If normalized, we use the calculated X, Y (which are now bottom-left based)
-            can.drawImage(sig_path, x, y, width=width, height=height, mask='auto', anchor='sw') # sw = south west origin
-            can.save()
-            packet.seek(0)
-            
-            sig_pdf = PdfReader(packet)
-            sig_page = sig_pdf.pages[0]
-            
-            reader.pages[page_num].merge_page(sig_page)
-            
-        # Add all pages to writer
+        sig_id = str(uuid.uuid4())
+        sig_path = os.path.join(DOWNLOAD_FOLDER, f"{sig_id}_signature.png")
+        sig_img = Image.open(signature.stream)
+        sig_img.save(sig_path, 'PNG')
+        reader = PdfReader(input_path)
+        writer = PdfWriter()
+        if not (0 <= page_num < len(reader.pages)):
+            return jsonify({'error': 'Invalid page index'}), 400
+        page_width = float(reader.pages[page_num].mediabox.width)
+        page_height = float(reader.pages[page_num].mediabox.height)
+        def norm(v, size):
+            return float(v) * size if float(v) <= 1.0 else float(v)
+        x = norm(x, page_width)
+        y = norm(y, page_height)
+        width = norm(width, page_width)
+        height = norm(height, page_height)
+        y_pdf = page_height - y - height
+        packet = io.BytesIO()
+        can = canvas.Canvas(packet, pagesize=(page_width, page_height))
+        can.drawImage(sig_path, x, y_pdf, width=width, height=height, mask='auto')
+        can.save()
+        packet.seek(0)
+        sig_pdf = PdfReader(packet)
+        sig_page = sig_pdf.pages[0]
+        reader.pages[page_num].merge_page(sig_page)
         for page in reader.pages:
             writer.add_page(page)
-            
         output_filename = f"{original_name}_signed.pdf"
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
         with open(output_path, 'wb') as f:
             writer.write(f)
-            
-        # Cleanup
-        os.remove(input_path)
+        if os.path.exists(input_path):
+            os.remove(input_path)
         if os.path.exists(sig_path):
             os.remove(sig_path)
-        
         log_history('Add Signature/Image', output_filename)
-        
         return jsonify({
             'success': True,
             'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
+            'download_url': f"/files/{output_filename}"
         })
-        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

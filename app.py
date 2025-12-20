@@ -10,6 +10,8 @@ from flask_cors import CORS
 import yt_dlp
 from gtts import gTTS
 from PIL import Image
+import re
+import zipfile
 # rembg and cv2 are loaded lazily to avoid startup timeout
 
 # --- DNS WORKAROUND FOR HUGGING FACE ---
@@ -113,19 +115,21 @@ def download_worker(task_id, url, quality):
 
         ydl_opts = {
             'outtmpl': output_template,
-            # 'noplaylist': True, # Removed to allow carousels/playlists
-
-            # 'source_address': '0.0.0.0', # Removed to allow IPv6
-            'cookiefile': cookies_path,  # Use absolute path
+            'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android_tv'],
+                    'player_client': ['android_tv', 'web'],
+                },
+                'instagram': {
+                    'get_video_id': True,
                 }
             },
-            'verbose': True, # Enable verbose logging
+            'verbose': True,
             'progress_hooks': [progress_hook],
             'ffmpeg_location': os.path.dirname(ffmpeg_path) if os.path.exists(ffmpeg_path) else None,
             'merge_output_format': 'mp4',
+            'ignoreerrors': True, # Keep going even if one item in carousel fails
+            'no_warnings': True,
         }
 
         if quality == 'audio':
@@ -157,63 +161,109 @@ def download_worker(task_id, url, quality):
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                if 'entries' in info and info['entries']:
-                    entries = info['entries']
-                    files = []
+                
+                # Check for cancellation again
+                if downloads[task_id].get('cancel_event'):
+                    raise Exception("Download cancelled by user")
+
+                if 'entries' in info:
+                    # Carousel or Playlist
+                    entries = [e for e in info['entries'] if e is not None]
+                    if not entries:
+                        raise Exception('No media found in this link or access denied')
+                    
+                    downloaded_files = []
                     for entry in entries:
-                        fpath = ydl.prepare_filename(entry)
-                        if quality == 'audio':
-                            fpath = os.path.splitext(fpath)[0] + '.mp3'
-                        if os.path.exists(fpath):
-                            files.append(fpath)
-                    if not files:
-                        raise Exception('No media files downloaded')
-                    import zipfile, re
-                    title = info.get('title') or 'download'
-                    title = re.sub(r'[<>:"/\\|?*]', '', title)
-                    zip_name = f"{title}.zip"
-                    zip_path = os.path.join(DOWNLOAD_FOLDER, zip_name)
+                        # Find the actual file on disk
+                        base_fname = ydl.prepare_filename(entry)
+                        # It might have been merged to mp4 or converted to mp3
+                        possible_exts = ['.mp4', '.mkv', '.webm', '.mp3', '.m4a']
+                        found = False
+                        if os.path.exists(base_fname):
+                           downloaded_files.append(base_fname)
+                           found = True
+                        else:
+                           root = os.path.splitext(base_fname)[0]
+                           for ext in possible_exts:
+                               if os.path.exists(root + ext):
+                                   downloaded_files.append(root + ext)
+                                   found = True
+                                   break
+                    
+                    if not downloaded_files:
+                        raise Exception('Could not find downloaded files')
+                    
+                    # Zip them up
+                    safe_title = re.sub(r'[<>:"/\\|?*]', '', info.get('title') or 'media_master_bundle')
+                    zip_filename = f"{task_id}_{safe_title[:50]}.zip"
+                    zip_path = os.path.join(DOWNLOAD_FOLDER, zip_filename)
+                    
                     with zipfile.ZipFile(zip_path, 'w') as zf:
-                        for f in files:
+                        for f in downloaded_files:
                             zf.write(f, os.path.basename(f))
+                    
                     downloads[task_id]['status'] = 'completed'
                     downloads[task_id]['result'] = {
-                        'filename': zip_name,
-                        'title': info.get('title', 'Unknown Title'),
-                        'download_url': f'/files/{zip_name}'
+                        'filename': zip_filename,
+                        'title': info.get('title', 'Carousel Contents'),
+                        'download_url': f'/files/{zip_filename}'
                     }
                 else:
+                    # Single file
                     filename = ydl.prepare_filename(info)
-                    if quality == 'audio':
-                        filename = os.path.splitext(filename)[0] + '.mp3'
+                    # Check for merged extensions
                     if not os.path.exists(filename):
-                        raise Exception('Downloaded file not found')
+                        root = os.path.splitext(filename)[0]
+                        for ext in ['.mp4', '.mkv', '.webm', '.mp3']:
+                            if os.path.exists(root + ext):
+                                filename = root + ext
+                                break
+                    
+                    if not os.path.exists(filename):
+                        raise Exception('Downloaded file not found on server')
+
                     downloads[task_id]['status'] = 'completed'
                     downloads[task_id]['result'] = {
                         'filename': os.path.basename(filename),
-                        'title': info.get('title', 'Unknown Title'),
+                        'title': info.get('title', 'Media'),
                         'download_url': f"/files/{os.path.basename(filename)}"
                     }
-        except yt_dlp.utils.DownloadError as e:
-            ydl_opts['format'] = 'best'
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-                if quality == 'audio':
-                    filename = os.path.splitext(filename)[0] + '.mp3'
-                downloads[task_id]['status'] = 'completed'
-                downloads[task_id]['result'] = {
-                    'filename': os.path.basename(filename),
-                    'title': info.get('title', 'Unknown Title'),
-                    'download_url': f"/files/{os.path.basename(filename)}"
-                }
+
+        except Exception as e:
+             # Fallback to extremely basic download if complex format fails
+             print(f"Retrying basic download for {url} due to: {e}")
+             if downloads[task_id].get('cancel_event'): raise e
+             
+             ydl_opts['format'] = 'best'
+             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                 info = ydl.extract_info(url, download=True)
+                 filename = ydl.prepare_filename(info)
+                 if not os.path.exists(filename):
+                     # Try to find it if it changed ext
+                     root = os.path.splitext(filename)[0]
+                     for ext in ['.mp4', '.webm', '.mkv']:
+                         if os.path.exists(root + ext):
+                             filename = root + ext
+                             break
+                 
+                 if os.path.exists(filename):
+                     downloads[task_id]['status'] = 'completed'
+                     downloads[task_id]['result'] = {
+                         'filename': os.path.basename(filename),
+                         'title': info.get('title', 'Media'),
+                         'download_url': f"/files/{os.path.basename(filename)}"
+                     }
+                 else:
+                     raise Exception("Final fallback failed. Media might be private or unsupported.")
 
     except Exception as e:
-        if str(e) == "Download cancelled by user":
+        print(f"Download Worker Error: {e}")
+        if str(e) == "Download cancelled by user" or downloads[task_id].get('cancel_event'):
             downloads[task_id]['status'] = 'cancelled'
         else:
             downloads[task_id]['status'] = 'error'
             downloads[task_id]['error'] = str(e)
+
 
 @app.route('/api/download', methods=['POST'])
 def start_download():
@@ -318,8 +368,13 @@ def convert_video():
         output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
 
         video = VideoFileClip(input_path)
-        video.audio.write_audiofile(output_path)
+        if hasattr(video, 'audio') and video.audio is not None:
+            video.audio.write_audiofile(output_path)
+        else:
+            video.close()
+            raise Exception("Cette vidéo ne contient pas de piste audio.")
         video.close()
+
         
         # Clean up input video if needed (optional, keeping for now)
         # os.remove(input_path)
@@ -1298,29 +1353,40 @@ def handle_404_error(e):
 
 def check_dependencies():
     print("------------------ CHECKING DEPENDENCIES ------------------")
-    deps = {
-        'ffmpeg': 'Critical for media conversion',
-        'ffprobe': 'Critical for media analysis',
-    }
-    
     bin_path = os.path.join(os.getcwd(), 'bin')
     os.environ['PATH'] += os.pathsep + bin_path
     
+    # System Binaries
+    deps = {'ffmpeg': 'Critical', 'ffprobe': 'Critical'}
     missing = []
+    from shutil import which
     for dep, desc in deps.items():
-        from shutil import which
         if not which(dep):
             missing.append(f"{dep} ({desc})")
             print(f"❌ {dep} NOT FOUND")
         else:
             print(f"✅ {dep} found")
             
+    # Python Libraries
+    python_libs = {
+        'rembg': 'Background Removal',
+        'cv2': 'Watermark Removal (OpenCV)',
+        'moviepy': 'Video Conversion',
+        'PIL': 'Image processing'
+    }
+    for lib, name in python_libs.items():
+        try:
+            __import__(lib)
+            print(f"✅ {name} (Python) found")
+        except ImportError:
+            missing.append(f"{lib} (Python Library)")
+            print(f"❌ {name} NOT INSTALLED")
+
     if missing:
-        print("WARNING: Some dependencies are missing. Features may act up.")
+        print("WARNING: Some dependencies are missing!")
         print(f"Missing: {', '.join(missing)}")
-        # We don't exit, just warn
     else:
-        print("All critical dependencies check out.")
+        print("All dependencies check out.")
     print("-----------------------------------------------------------")
 
 if __name__ == '__main__':

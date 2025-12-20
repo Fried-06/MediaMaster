@@ -143,6 +143,10 @@ html {
   color: var(--secondary);
 }
 
+.mobile-menu-btn {
+    display: none;
+}
+
 .nav-links {
   display: flex;
   gap: 1rem;
@@ -866,11 +870,25 @@ select option {
   }
 }
 
-@keyframes pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(0, 242, 234, 0.4);
-  }
-  50% {
+/* Global Overflow Fixes */
+* {
+    max-width: 100vw;
+}
+
+.navbar, .container, .glass-panel, .tab-content {
+    max-width: 100% !important;
+}
+
+img, video, canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Ensure break words for long text */
+p, span, h1, h2, h3, a {
+    overflow-wrap: break-word;
+}
+
     box-shadow: 0 0 20px 10px rgba(0, 242, 234, 0);
   }
 }

@@ -1129,12 +1129,19 @@ def handle_reviews():
             }
 
             reviews = []
+            reviews = []
             if os.path.exists(REVIEWS_FILE):
-                with open(REVIEWS_FILE, 'r', encoding='utf-8') as f:
-                    try:
+                try:
+                    with open(REVIEWS_FILE, 'r', encoding='utf-8') as f:
                         reviews = json.load(f)
-                    except json.JSONDecodeError:
-                        pass
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    # File might be empty, corrupted, or have wrong encoding (e.g. UTF-16)
+                    # Try reading with 'utf-16' just in case, or just reset
+                    try:
+                        with open(REVIEWS_FILE, 'r', encoding='utf-16') as f:
+                            reviews = json.load(f)
+                    except:
+                        reviews = [] # If all else fails, start fresh
 
             reviews.insert(0, review_entry)
             reviews = reviews[:100]

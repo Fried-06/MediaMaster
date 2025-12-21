@@ -376,16 +376,59 @@ def tool_worker_wrapper(task_id, func, *args, **kwargs):
         downloads[task_id]['error'] = str(e)
 
 def video_to_audio_task(task_id, input_path, output_filename):
-    from moviepy.editor import VideoFileClip
+    """Fast video to audio conversion using FFmpeg directly"""
+    import subprocess
+    import re
+    
     output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-    video = VideoFileClip(input_path)
-    if hasattr(video, 'audio') and video.audio is not None:
-        video.audio.write_audiofile(output_path, logger=None)
-    else:
-        video.close()
-        raise Exception("Cette vidéo ne contient pas de piste audio.")
-    video.close()
-    if os.path.exists(input_path): os.remove(input_path)
+    ffmpeg_bin = FFMPEG_BIN if os.path.exists(FFMPEG_BIN) else 'ffmpeg'
+    
+    # Get video duration first for progress calculation
+    duration_cmd = [ffmpeg_bin, '-i', input_path]
+    try:
+        result = subprocess.run(duration_cmd, capture_output=True, text=True, stderr=subprocess.STDOUT)
+        duration_match = re.search(r'Duration: (\d+):(\d+):(\d+\.\d+)', result.stdout)
+        if duration_match:
+            hours, minutes, seconds = duration_match.groups()
+            total_duration = int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+        else:
+            total_duration = 0
+    except:
+        total_duration = 0
+    
+    downloads[task_id]['progress'] = 15
+    
+    # Fast audio extraction with FFmpeg
+    cmd = [
+        ffmpeg_bin, '-i', input_path,
+        '-vn',  # No video
+        '-acodec', 'libmp3lame',  # MP3 codec
+        '-q:a', '2',  # High quality (VBR)
+        '-y',  # Overwrite
+        output_path
+    ]
+    
+    # Run with progress tracking
+    process = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, universal_newlines=True)
+    
+    # Parse progress from FFmpeg output
+    for line in process.stderr:
+        if total_duration > 0:
+            time_match = re.search(r'time=(\d+):(\d+):(\d+\.\d+)', line)
+            if time_match:
+                h, m, s = time_match.groups()
+                current_time = int(h) * 3600 + int(m) * 60 + float(s)
+                progress = min(95, 15 + int((current_time / total_duration) * 80))
+                downloads[task_id]['progress'] = progress
+    
+    process.wait()
+    
+    if process.returncode != 0:
+        raise Exception("Erreur lors de l'extraction audio")
+    
+    if os.path.exists(input_path): 
+        os.remove(input_path)
+    
     return output_filename
 
 @app.route('/api/convert-video', methods=['POST'])
@@ -448,26 +491,68 @@ def serve_file(filename):
 
 # --- VIDEO COMPRESSION ---
 def compress_video_task(task_id, input_path, output_filename, quality):
+    """Fast video compression with real-time progress"""
+    import subprocess
+    import re
+    
     # Set compression parameters based on quality
     if quality == 'low':
-        crf, scale = 35, "640:-2"
+        crf, scale, preset = 35, "640:-2", "veryfast"
     elif quality == 'high':
-        crf, scale = 23, "1920:-2"
+        crf, scale, preset = 23, "1920:-2", "medium"
     else: # medium
-        crf, scale = 28, "1280:-2"
+        crf, scale, preset = 28, "1280:-2", "fast"
     
     output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
     ffmpeg_bin = FFMPEG_BIN if os.path.exists(FFMPEG_BIN) else 'ffmpeg'
+    
+    # Get video duration for progress
+    duration_cmd = [ffmpeg_bin, '-i', input_path]
+    try:
+        result = subprocess.run(duration_cmd, capture_output=True, text=True, stderr=subprocess.STDOUT)
+        duration_match = re.search(r'Duration: (\d+):(\d+):(\d+\.\d+)', result.stdout)
+        if duration_match:
+            hours, minutes, seconds = duration_match.groups()
+            total_duration = int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+        else:
+            total_duration = 0
+    except:
+        total_duration = 0
+    
+    downloads[task_id]['progress'] = 20
+    
     cmd = [
         ffmpeg_bin, '-y', '-i', input_path,
-        '-vf', f'scale={scale}', '-c:v', 'libx264', '-crf', str(crf),
-        '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart',
+        '-vf', f'scale={scale}',
+        '-c:v', 'libx264',
+        '-preset', preset,  # Faster encoding
+        '-crf', str(crf),
+        '-c:a', 'aac',
+        '-b:a', '128k',
+        '-movflags', '+faststart',
         output_path
     ]
     
-    downloads[task_id]['progress'] = 30
-    subprocess.run(cmd, check=True, capture_output=True)
-    if os.path.exists(input_path): os.remove(input_path)
+    # Run with progress tracking
+    process = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, universal_newlines=True)
+    
+    for line in process.stderr:
+        if total_duration > 0:
+            time_match = re.search(r'time=(\d+):(\d+):(\d+\.\d+)', line)
+            if time_match:
+                h, m, s = time_match.groups()
+                current_time = int(h) * 3600 + int(m) * 60 + float(s)
+                progress = min(95, 20 + int((current_time / total_duration) * 75))
+                downloads[task_id]['progress'] = progress
+    
+    process.wait()
+    
+    if process.returncode != 0:
+        raise Exception("Erreur lors de la compression")
+    
+    if os.path.exists(input_path): 
+        os.remove(input_path)
+    
     return output_filename
 
 @app.route('/api/compress-video', methods=['POST'])

@@ -118,14 +118,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (h1) { h1.dataset.typed = ""; h1.innerText = h1.getAttribute('data-original-text') || h1.innerText; h1.setAttribute('data-original-text', h1.innerText); }
             if (p) { p.dataset.typed = ""; p.innerText = p.getAttribute('data-original-text') || p.innerText; p.setAttribute('data-original-text', p.innerText); }
 
+            // Start typing effect on tab switch
             initTypingEffect();
-
-            // Load History if tab is active
-            if (btn.dataset.tab === 'history') {
-                loadHistory();
-            }
         });
     });
+
+    // Global function for Landing Page cards
+    window.switchTab = (tabId) => {
+        const btn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+        if (btn) btn.click();
+    };
 
     // --- CONVERTER MODE SWITCHING ---
     const modeBtns = document.querySelectorAll('.mode-btn');
@@ -1489,5 +1491,113 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
                 }
             };
         }
+    }
+
+    // --- REVIEWS LOGIC ---
+    
+    // Load Reviews
+    const loadReviews = async () => {
+        try {
+            const res = await fetch('/api/reviews');
+            const reviews = await res.json();
+            const slider = document.getElementById('reviews-slider');
+            
+            if (reviews && reviews.length > 0) {
+                slider.innerHTML = ''; // Clear default
+                reviews.forEach((review, index) => {
+                    const card = document.createElement('div');
+                    card.className = `review-card ${index === 0 ? 'active' : ''}`;
+                    card.innerHTML = `
+                        <div class="review-avatar">${review.initials}</div>
+                        <div class="review-content">
+                            <h4>${review.name}</h4>
+                            <p>"${review.text}"</p>
+                            <div class="review-stars">
+                                ${Array(parseInt(review.rating)).fill('<i class="fa-solid fa-star"></i>').join('')}
+                            </div>
+                        </div>
+                    `;
+                    slider.appendChild(card);
+                });
+            }
+        } catch (e) {
+            console.error('Error loading reviews:', e);
+        }
+    };
+
+    // Carousel Auto-Scroll
+    setInterval(() => {
+        const slider = document.getElementById('reviews-slider');
+        if (!slider) return;
+        
+        const cards = slider.querySelectorAll('.review-card');
+        if (cards.length < 2) return;
+
+        let activeIndex = Array.from(cards).findIndex(c => c.classList.contains('active'));
+        let nextIndex = (activeIndex + 1) % cards.length;
+
+        if (activeIndex !== -1) {
+            cards[activeIndex].classList.remove('active');
+            cards[activeIndex].classList.add('exit');
+            
+            setTimeout(() => {
+                cards[activeIndex].classList.remove('exit');
+            }, 500);
+        }
+
+        cards[nextIndex].classList.add('active');
+    }, 10000); // 10 seconds
+
+    // Initial Load
+    loadReviews();
+
+    // Review Submission
+    const reviewForm = document.getElementById('review-form');
+    if (reviewForm) {
+        // Star Rating Logic
+        const starContainer = reviewForm.querySelector('.star-rating');
+        const hiddenInput = document.getElementById('review-rating');
+        const stars = starContainer.querySelectorAll('i');
+
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                const rating = star.dataset.rating;
+                hiddenInput.value = rating;
+                stars.forEach(s => {
+                    s.style.color = s.dataset.rating <= rating ? '#FFD700' : 'var(--text-muted)';
+                });
+            });
+        });
+
+        reviewForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('review-name').value;
+            const text = document.getElementById('review-text').value;
+            const rating = parseInt(hiddenInput.value);
+            const statusArea = document.getElementById('review-status');
+
+            statusArea.classList.remove('hidden');
+            statusArea.textContent = 'Envoi en cours...';
+
+            try {
+                const res = await fetch('/api/reviews', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, text, rating })
+                });
+                
+                if (res.ok) {
+                    showStatus(statusArea, 'Merci ! Votre avis a été publié.', 'success');
+                    reviewForm.reset();
+                    // Reset stars
+                    stars.forEach(s => s.style.color = '#FFD700');
+                    loadReviews(); // Refresh carousel
+                } else {
+                    throw new Error('Erreur lors de la publication');
+                }
+            } catch (err) {
+                showStatus(statusArea, 'Erreur lors de l\'envoi de l\'avis.', 'error');
+            }
+        });
     }
 });

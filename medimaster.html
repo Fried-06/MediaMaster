@@ -15,6 +15,11 @@
 </head>
 <body>
     <div class="background-glow"></div>
+    <!-- 2026 New Year Background Content -->
+    <div class="new-year-bg-content">
+        <div class="year-giant">2026</div>
+        <div class="fireworks-container"></div>
+    </div>
     <div class="snowflakes" aria-hidden="true">
         <div class="snowflake">❅</div><div class="snowflake">❆</div><div class="snowflake">❄</div><div class="snowflake">❅</div><div class="snowflake">❆</div><div class="snowflake">❄</div>
         <div class="snowflake">❅</div><div class="snowflake">❆</div><div class="snowflake">❄</div><div class="snowflake">❅</div>
@@ -32,12 +37,13 @@
         </button>
 
         <div class="nav-links" id="nav-links">
-            <button class="nav-btn active" data-tab="download"><i class="fa-solid fa-cloud-arrow-down"></i> Télécharger</button>
+            <button class="nav-btn active" data-tab="landing"><i class="fa-solid fa-house"></i> Accueil</button>
+            <button class="nav-btn" data-tab="download"><i class="fa-solid fa-cloud-arrow-down"></i> Télécharger</button>
             <button class="nav-btn" data-tab="convert"><i class="fa-solid fa-wand-magic"></i> Convertir</button>
             <button class="nav-btn" data-tab="images"><i class="fa-solid fa-image"></i> Images</button>
             <button class="nav-btn" data-tab="tools"><i class="fa-solid fa-toolbox"></i> Outils</button>
             <button class="nav-btn" data-tab="bureautique"><i class="fa-solid fa-file-pdf"></i> Bureautique</button>
-            <button class="nav-btn" data-tab="history"><i class="fa-solid fa-clock-rotate-left"></i> Historique</button>
+            <button class="nav-btn" data-tab="suggestions-reviews"><i class="fa-solid fa-star"></i> Avis & Suggestions</button>
             
             <div class="theme-selector-container">
                 <select id="theme-select" class="theme-select">
@@ -53,7 +59,72 @@
     </nav>
 
     <main class="container">
-        <section id="download-section" class="tab-content active">
+        <!-- LANDING PAGE SECTION -->
+        <section id="landing-section" class="tab-content active">
+            <div class="landing-content">
+                <div class="welcome-message-container">
+                    <h1 class="welcome-title">Bienvenue sur <span class="brand-highlight">MediaMaster</span></h1>
+                    <p class="welcome-subtitle">La plateforme tout-en-un pour vos médias</p>
+                    <div class="year-banner">Bonne Année 2026 ! 🎉</div>
+                </div>
+
+                <!-- Music Visualizer Animation -->
+                <div class="audio-visualizer">
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                </div>
+
+                <h3 class="section-prompt">Choisissez une section pour commencer</h3>
+
+                <div class="landing-cards-grid">
+                    <div class="landing-card" onclick="switchTab('download')">
+                        <div class="card-icon"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+                        <h3>Téléchargement</h3>
+                        <p>TikTok, Insta, FB...</p>
+                        <div class="glow-border"></div>
+                    </div>
+                    <div class="landing-card" onclick="switchTab('convert')">
+                        <div class="card-icon"><i class="fa-solid fa-wand-magic"></i></div>
+                        <h3>Conversion</h3>
+                        <p>Vidéo & Audio</p>
+                        <div class="glow-border"></div>
+                    </div>
+                    <div class="landing-card" onclick="switchTab('tools')">
+                        <div class="card-icon"><i class="fa-solid fa-toolbox"></i></div>
+                        <h3>Outils</h3>
+                        <p>Compression, IA...</p>
+                        <div class="glow-border"></div>
+                    </div>
+                    <div class="landing-card" onclick="switchTab('bureautique')">
+                        <div class="card-icon"><i class="fa-solid fa-file-pdf"></i></div>
+                        <h3>Bureautique</h3>
+                        <p>PDF, Word, Sign...</p>
+                        <div class="glow-border"></div>
+                    </div>
+                </div>
+
+                <!-- REVIEWS CAROUSEL -->
+                <div class="reviews-carousel-container glass-panel" style="margin-top: 4rem; text-align: center;">
+                    <h3>Ce que nos utilisateurs disent</h3>
+                    <div class="reviews-slider" id="reviews-slider">
+                        <!-- Reviews will be injected here by JS -->
+                        <div class="review-card active">
+                            <div class="review-avatar">MM</div>
+                            <div class="review-content">
+                                <h4>MediaMaster Team</h4>
+                                <p>"Merci de faire confiance à MediaMaster pour tous vos besoins médias. Bonne année 2026 !"</p>
+                                <div class="review-stars">
+                                    <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="download-section" class="tab-content">
             <div class="hero-text">
                 <h1>Téléchargez sans limites</h1>
                 <p>Sauvegardez vos vidéos préférées de TikTok, Instagram, Facebook et Snapchat en haute qualité.</p>
@@ -400,23 +471,65 @@
         </section>
 
         <!-- History Section -->
-        <section id="history-section" class="tab-content">
+        <!-- SUGGESTIONS & REVIEWS SECTION -->
+        <section id="suggestions-reviews-section" class="tab-content">
             <div class="hero-text">
-                <h1>⏳ Historique</h1>
-                <p>Retrouvez vos 100 dernières actions.</p>
+                <h1>Avis & Suggestions</h1>
+                <p>Aidez-nous à améliorer MediaMaster !</p>
             </div>
-            
-            <div class="card glass-panel">
-                <div class="history-container" style="max-height: 400px; overflow-y: auto;">
-                    <table class="history-table" style="width: 100%; border-collapse: collapse; color: var(--text-main);">
-                        <thead>
-                            <tr style="border-bottom: 1px solid var(--glass-border); text-align: left;">
-                                <th style="padding: 10px;">Date</th>
-                                <th style="padding: 10px;">Action</th>
-                                <th style="padding: 10px;">Fichier</th>
-                                <th style="padding: 10px;">Statut</th>
-                            </tr>
-                        </thead>
+
+            <div class="auth-card glass-panel" style="max-width: 800px; margin: 0 auto;">
+                <div class="tool-mode-switch">
+                    <button class="tool-mode-btn active" data-tool="suggestions">Suggestions</button>
+                    <button class="tool-mode-btn" data-tool="reviews">Donner un Avis</button>
+                </div>
+
+                <!-- Suggestions Tab -->
+                <div id="suggestions-tool" class="tool-content active">
+                    <div class="suggestion-box">
+                        <i class="fa-regular fa-lightbulb" style="font-size: 3rem; color: var(--primary); margin-bottom: 20px;"></i>
+                        <h3>Une idée pour améliorer le site ?</h3>
+                        <p style="margin-bottom: 20px; color: var(--text-muted);">Envoyez-nous vos idées directement par email !</p>
+                        
+                        <a href="mailto:sambomissimbawilfried@gmail.com?subject=Suggestion%20MediaMaster" class="action-btn" style="text-decoration: none; justify-content: center;">
+                            <span>Envoyer une suggestion</span>
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Reviews Tab -->
+                <div id="reviews-tool" class="tool-content">
+                    <form id="review-form">
+                        <div class="input-group">
+                            <label>Votre Nom</label>
+                            <input type="text" id="review-name" placeholder="Ex: Jean Dupont" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Votre Avis</label>
+                            <textarea id="review-text" placeholder="Dites-nous ce que vous pensez..." rows="4" required></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label>Note</label>
+                            <div class="star-rating">
+                                <i class="fa-solid fa-star" data-rating="1"></i>
+                                <i class="fa-solid fa-star" data-rating="2"></i>
+                                <i class="fa-solid fa-star" data-rating="3"></i>
+                                <i class="fa-solid fa-star" data-rating="4"></i>
+                                <i class="fa-solid fa-star" data-rating="5"></i>
+                                <input type="hidden" id="review-rating" value="5">
+                            </div>
+                        </div>
+                        <button type="submit" class="action-btn">
+                            <span>Publier l'avis</span>
+                            <i class="fa-solid fa-bullhorn"></i>
+                        </button>
+                    </form>
+                    <div id="review-status" class="status-area hidden"></div>
+                </div>
+            </div>
+        </section>
+
                         <tbody id="history-body">
                             <!-- Injected via JS -->
                         </tbody>

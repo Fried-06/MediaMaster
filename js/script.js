@@ -438,14 +438,59 @@ const resetDownloadState = () => {
         }
     });
 
+const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml) => {
+    let toolPollInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/download/status/${taskId}`);
+            const data = await response.json();
+
+            if (data.status === 'processing' || data.status === 'pending' || data.status === 'downloading') {
+                const progress = data.progress || 0;
+                statusElement.classList.remove('hidden');
+                statusElement.innerHTML = `
+                    <div class="loader"></div>
+                    <p>Traitement en cours... ${Math.round(progress)}%</p>
+                    <div style="width: 100%; background: rgba(255,255,255,0.1); height: 4px; border-radius: 2px; margin-top: 5px;">
+                        <div style="width: ${progress}%; background: var(--primary); height: 100%; border-radius: 2px; transition: width 0.3s;"></div>
+                    </div>
+                `;
+            } else if (data.status === 'completed') {
+                clearInterval(toolPollInterval);
+                buttonElement.disabled = false;
+                buttonElement.innerHTML = originalButtonHtml;
+                statusElement.innerHTML = `
+                    <i class="fa-solid fa-check" style="color: var(--primary); font-size: 1.5rem;"></i>
+                    <p>Terminé ! <a href="${data.result.download_url}" download target="_blank" style="color: var(--text-main); text-decoration: underline;">Télécharger</a></p>
+                `;
+                
+                // Optional: show success modal like download?
+            } else if (data.status === 'error') {
+                clearInterval(toolPollInterval);
+                buttonElement.disabled = false;
+                buttonElement.innerHTML = originalButtonHtml;
+                statusElement.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${data.error}</p>`;
+            } else if (data.status === 'cancelled') {
+                clearInterval(toolPollInterval);
+                buttonElement.disabled = false;
+                buttonElement.innerHTML = originalButtonHtml;
+                statusElement.innerHTML = `<p style="color: var(--secondary);">Action annulée.</p>`;
+            }
+        } catch (err) {
+            console.error('Tool Polling Error:', err);
+            // Don't clear interval on transient fetch errors
+        }
+    }, 2000);
+};
+
     // --- CONVERT LOGIC ---
     const convertBtn = document.getElementById('convert-btn');
-    
+    const convertStatus = document.createElement('div');
+    convertStatus.className = 'status-area hidden';
+    convertBtn.parentNode.appendChild(convertStatus);
+
     convertBtn.addEventListener('click', async () => {
         const activeMode = document.querySelector('.mode-btn.active').dataset.mode;
-        
-        convertBtn.disabled = true;
-        convertBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Traitement...';
+        const originalHtml = convertBtn.innerHTML;
         
         try {
             let endpoint = '';
@@ -454,9 +499,7 @@ const resetDownloadState = () => {
 
             if (activeMode === 'video-audio') {
                 const fileInput = document.getElementById('file-input');
-                if (fileInput.files.length === 0) {
-                    throw new Error('Veuillez sélectionner une vidéo.');
-                }
+                if (fileInput.files.length === 0) throw new Error('Veuillez sélectionner une vidéo.');
                 endpoint = '/api/convert-video';
                 const formData = new FormData();
                 formData.append('file', fileInput.files[0]);
@@ -464,45 +507,41 @@ const resetDownloadState = () => {
             } else {
                 const textInput = document.getElementById('text-input');
                 const voiceSelect = document.getElementById('voice-select');
-                if (!textInput.value) {
-                    throw new Error('Veuillez entrer du texte.');
-                }
+                if (!textInput.value) throw new Error('Veuillez entrer du texte.');
                 endpoint = '/api/convert-text';
-                body = JSON.stringify({
-                    text: textInput.value,
-                    voice: voiceSelect.value
-                });
+                body = JSON.stringify({ text: textInput.value, voice: voiceSelect.value });
                 headers = { 'Content-Type': 'application/json' };
             }
 
-            const response = await fetch(`${endpoint}`, {
-                method: 'POST',
-                headers: headers,
-                body: body
-            });
+            convertBtn.disabled = true;
+            convertBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Initiation...';
+            convertStatus.classList.remove('hidden');
+            convertStatus.innerHTML = '<div class="loader"></div><p>Connexion au serveur...</p>';
 
+            const response = await fetch(endpoint, { method: 'POST', headers: headers, body: body });
             const data = await response.json();
 
-            if (data.success) {
-                // Direct Download Logic
+            if (!response.ok) throw new Error(data.error || 'Erreur serveur');
+
+            if (data.task_id) {
+                // Async Task
+                pollToolStatus(data.task_id, convertStatus, convertBtn, originalHtml);
+            } else if (data.success) {
+                // Direct Response (like text-to-speech potentially)
+                convertBtn.disabled = false;
+                convertBtn.innerHTML = originalHtml;
+                convertStatus.innerHTML = `<i class="fa-solid fa-check" style="color: var(--primary);"></i><p>Prêt ! <a href="${data.download_url}" download>Télécharger</a></p>`;
+                
                 const link = document.createElement('a');
                 link.href = data.download_url;
                 link.download = data.filename;
-                document.body.appendChild(link);
                 link.click();
-                document.body.removeChild(link);
-                
-                alert('Conversion terminée ! Le téléchargement a commencé.');
-            } else {
-                throw new Error(data.error);
             }
 
         } catch (error) {
-            console.error('Error:', error);
-            alert('Erreur : ' + error.message);
-        } finally {
             convertBtn.disabled = false;
-            convertBtn.innerHTML = '<span>Convertir</span><i class="fa-solid fa-wand-magic"></i>';
+            convertBtn.innerHTML = originalHtml;
+            convertStatus.innerHTML = `<p style="color: #ff5555;">Erreur: ${error.message}</p>`;
         }
     });
 
@@ -754,6 +793,7 @@ const resetDownloadState = () => {
             const videoInput = document.getElementById('video-input');
             const compressionLevel = document.getElementById('compression-level');
             const status = document.getElementById('compress-status');
+            const originalHtml = compressBtn.innerHTML;
             
             if (!videoInput.files.length) {
                 alert('Veuillez sélectionner une vidéo.');
@@ -761,9 +801,9 @@ const resetDownloadState = () => {
             }
 
             compressBtn.disabled = true;
-            compressBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Compression...';
+            compressBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Initiation...';
             status.classList.remove('hidden');
-            status.innerHTML = '<div class="loader"></div><p>Compression en cours... Cela peut prendre plusieurs minutes.</p>';
+            status.innerHTML = '<div class="loader"></div><p>Connexion au serveur...</p>';
 
             const formData = new FormData();
             formData.append('file', videoInput.files[0]);
@@ -773,16 +813,17 @@ const resetDownloadState = () => {
                 const response = await fetch('/api/compress-video', { method: 'POST', body: formData });
                 const data = await response.json();
 
-                if (data.success) {
-                    status.innerHTML = `<i class="fa-solid fa-check" style="color: var(--primary); font-size: 1.5rem;"></i><p>Terminé ! <a href="${data.download_url}" download target="_blank" style="color: var(--text-main); text-decoration: underline;">Télécharger</a></p>`;
+                if (!response.ok) throw new Error(data.error || 'Erreur serveur');
+
+                if (data.task_id) {
+                    pollToolStatus(data.task_id, status, compressBtn, originalHtml);
                 } else {
-                    status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${data.error}</p>`;
+                     throw new Error('Task ID missing from response');
                 }
             } catch (error) {
-                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Une erreur est survenue.</p>`;
-            } finally {
                 compressBtn.disabled = false;
-                compressBtn.innerHTML = '<span>Compresser la Vidéo</span><i class="fa-solid fa-compress"></i>';
+                compressBtn.innerHTML = originalHtml;
+                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${error.message}</p>`;
             }
         });
     }
@@ -793,6 +834,7 @@ const resetDownloadState = () => {
         removebgBtn.addEventListener('click', async () => {
             const bgInput = document.getElementById('bg-input');
             const status = document.getElementById('removebg-status');
+            const originalHtml = removebgBtn.innerHTML;
             
             if (!bgInput.files.length) {
                 alert('Veuillez sélectionner une image.');
@@ -802,7 +844,7 @@ const resetDownloadState = () => {
             removebgBtn.disabled = true;
             removebgBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Traitement...';
             status.classList.remove('hidden');
-            status.innerHTML = '<div class="loader"></div><p>Suppression du fond en cours...</p>';
+            status.innerHTML = '<div class="loader"></div><p>Envoi de l\'image...</p>';
 
             const formData = new FormData();
             formData.append('file', bgInput.files[0]);
@@ -811,16 +853,17 @@ const resetDownloadState = () => {
                 const response = await fetch('/api/remove-background', { method: 'POST', body: formData });
                 const data = await response.json();
 
-                if (data.success) {
-                    status.innerHTML = `<i class="fa-solid fa-check" style="color: var(--primary); font-size: 1.5rem;"></i><p>Terminé ! <a href="${data.download_url}" download target="_blank" style="color: var(--text-main); text-decoration: underline;">Télécharger</a></p>`;
+                if (!response.ok) throw new Error(data.error || 'Erreur serveur');
+
+                if (data.task_id) {
+                    pollToolStatus(data.task_id, status, removebgBtn, originalHtml);
                 } else {
-                    status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${data.error}</p>`;
+                     throw new Error('Task ID missing');
                 }
             } catch (error) {
-                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Une erreur est survenue.</p>`;
-            } finally {
                 removebgBtn.disabled = false;
-                removebgBtn.innerHTML = '<span>Supprimer le Fond</span><i class="fa-solid fa-eraser"></i>';
+                removebgBtn.innerHTML = originalHtml;
+                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${error.message}</p>`;
             }
         });
     }
@@ -831,6 +874,7 @@ const resetDownloadState = () => {
         removewmBtn.addEventListener('click', async () => {
             const wmInput = document.getElementById('wm-input');
             const status = document.getElementById('removewm-status');
+            const originalHtml = removewmBtn.innerHTML;
             
             if (!wmInput.files.length) {
                 alert('Veuillez sélectionner une image.');
@@ -838,9 +882,9 @@ const resetDownloadState = () => {
             }
 
             removewmBtn.disabled = true;
-            removewmBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Traitement...';
+            removewmBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Envoi...';
             status.classList.remove('hidden');
-            status.innerHTML = '<div class="loader"></div><p>Suppression du watermark...</p>';
+            status.innerHTML = '<div class="loader"></div><p>Traitement...</p>';
 
             const formData = new FormData();
             formData.append('file', wmInput.files[0]);
@@ -853,16 +897,16 @@ const resetDownloadState = () => {
                 const response = await fetch('/api/remove-watermark', { method: 'POST', body: formData });
                 const data = await response.json();
 
-                if (data.success) {
-                    status.innerHTML = `<i class="fa-solid fa-check" style="color: var(--primary); font-size: 1.5rem;"></i><p>Terminé ! <a href="${data.download_url}" download target="_blank" style="color: var(--text-main); text-decoration: underline;">Télécharger</a></p>`;
+                if (!response.ok) throw new Error(data.error || 'Erreur serveur');
+                if (data.task_id) {
+                    pollToolStatus(data.task_id, status, removewmBtn, originalHtml);
                 } else {
-                    status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${data.error}</p>`;
+                    throw new Error('Task ID missing');
                 }
             } catch (error) {
-                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Une erreur est survenue.</p>`;
-            } finally {
                 removewmBtn.disabled = false;
-                removewmBtn.innerHTML = '<span>Supprimer le Watermark</span><i class="fa-solid fa-droplet-slash"></i>';
+                removewmBtn.innerHTML = originalHtml;
+                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${error.message}</p>`;
             }
         });
     }
@@ -1093,6 +1137,7 @@ const resetDownloadState = () => {
                 }
             }
 
+            const originalButtonHtml = processBtn.innerHTML;
             processBtn.disabled = true;
             processBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';
             statusArea.classList.add('hidden');
@@ -1105,20 +1150,26 @@ const resetDownloadState = () => {
 
                 const data = await response.json();
 
-                if (data.success) {
+                if (!response.ok) throw new Error(data.error || 'Erreur serveur');
+
+                if (data.task_id) {
+                    showStatus(statusArea, '<div class="loader"></div><p>Action mise en file d\'attente...</p>', 'info');
+                    pollToolStatus(data.task_id, statusArea, processBtn, originalButtonHtml);
+                } else if (data.success) {
                     let msg = `Succès ! <a href="${data.download_url}" class="download-link" download>Télécharger le fichier</a>`;
                     if (data.storage_path) {
                         msg += `<br><span style="font-size:0.8em; color:var(--text-muted);">Enregistré sous : ${data.storage_path}</span>`;
                     }
                     showStatus(statusArea, msg, 'success');
+                    processBtn.disabled = false;
+                    processBtn.innerHTML = originalButtonHtml;
                 } else {
-                    showStatus(statusArea, `Erreur: ${data.error}`, 'error');
+                    throw new Error(data.error || 'Erreur inconnue');
                 }
             } catch (error) {
-                showStatus(statusArea, `Erreur de connexion: ${error.message}`, 'error');
-            } finally {
+                showStatus(statusArea, `Erreur: ${error.message}`, 'error');
                 processBtn.disabled = false;
-                processBtn.innerHTML = `<span>${config.title}</span> <i class="fa-solid fa-check"></i>`;
+                processBtn.innerHTML = originalButtonHtml;
             }
         });
     };
@@ -1396,6 +1447,7 @@ const resetDownloadState = () => {
                     alert('Ajoutez un PDF et une signature');
                     return;
                 }
+                const originalHtml = saveBtn.innerHTML;
                 saveBtn.disabled = true;
                 saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';
                 const normX = sigEl.offsetLeft / canvas.width;
@@ -1413,17 +1465,26 @@ const resetDownloadState = () => {
                 try {
                     const resp = await fetch('/api/add-signature', { method: 'POST', body: formData });
                     const data = await resp.json();
-                    if (data.success) {
+                    
+                    if (!resp.ok) throw new Error(data.error || 'Erreur serveur');
+                    
+                    if (data.task_id) {
+                        // Async task - start polling
+                        statusArea.classList.remove('hidden');
+                        pollToolStatus(data.task_id, statusArea, saveBtn, originalHtml);
+                    } else if (data.success) {
+                        // Direct response (shouldn't happen with new async backend)
                         const msg = `Succès ! <a href="${data.download_url}" class="download-link" download>Télécharger le fichier</a>`;
                         showStatus(statusArea, msg, 'success');
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = originalHtml;
                     } else {
-                        showStatus(statusArea, `Erreur: ${data.error}`, 'error');
+                        throw new Error(data.error || 'Erreur inconnue');
                     }
                 } catch (err) {
                     showStatus(statusArea, `Erreur: ${err.message}`, 'error');
-                } finally {
                     saveBtn.disabled = false;
-                    saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Sauvegarder';
+                    saveBtn.innerHTML = originalHtml;
                 }
             };
         }

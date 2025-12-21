@@ -349,45 +349,60 @@ def convert_image():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+def tool_worker_wrapper(task_id, func, *args, **kwargs):
+    """Generic wrapper for background tool tasks"""
+    try:
+        downloads[task_id]['status'] = 'processing'
+        downloads[task_id]['progress'] = 10  # Initial jump
+        
+        result_filename = func(task_id, *args, **kwargs)
+        
+        # Check for cancellation
+        if downloads[task_id].get('cancel_event'):
+            # Clean up result if produced
+            if result_filename and os.path.exists(os.path.join(DOWNLOAD_FOLDER, result_filename)):
+                os.remove(os.path.join(DOWNLOAD_FOLDER, result_filename))
+            downloads[task_id]['status'] = 'cancelled'
+            return
+
+        downloads[task_id]['status'] = 'completed'
+        downloads[task_id]['result'] = {
+            'filename': result_filename,
+            'download_url': f'/files/{result_filename}'
+        }
+    except Exception as e:
+        print(f"Tool Error ({task_id}): {e}")
+        downloads[task_id]['status'] = 'error'
+        downloads[task_id]['error'] = str(e)
+
+def video_to_audio_task(task_id, input_path, output_filename):
+    from moviepy.editor import VideoFileClip
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    video = VideoFileClip(input_path)
+    if hasattr(video, 'audio') and video.audio is not None:
+        video.audio.write_audiofile(output_path, logger=None)
+    else:
+        video.close()
+        raise Exception("Cette vidéo ne contient pas de piste audio.")
+    video.close()
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
+
 @app.route('/api/convert-video', methods=['POST'])
 def convert_video():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
-    
+    if 'file' not in request.files: return jsonify({'error': 'No file uploaded'}), 400
     file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
 
-    try:
-        from moviepy.editor import VideoFileClip
-        file_id = str(uuid.uuid4())
-        input_path = os.path.join(DOWNLOAD_FOLDER, f"{file_id}_{file.filename}")
-        file.save(input_path)
-
-        output_filename = f"{file_id}.mp3"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-
-        video = VideoFileClip(input_path)
-        if hasattr(video, 'audio') and video.audio is not None:
-            video.audio.write_audiofile(output_path)
-        else:
-            video.close()
-            raise Exception("Cette vidéo ne contient pas de piste audio.")
-        video.close()
-
-        
-        # Clean up input video if needed (optional, keeping for now)
-        # os.remove(input_path)
-
-        return jsonify({
-            'success': True,
-            'message': 'Conversion complete',
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_input_{secure_filename(file.filename)}")
+    file.save(input_path)
+    output_filename = f"{task_id}.mp3"
+    
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, video_to_audio_task, input_path, output_filename)).start()
+    
+    return jsonify({'success': True, 'task_id': task_id})
 
 @app.route('/api/convert-text', methods=['POST'])
 def convert_text():
@@ -432,579 +447,435 @@ def serve_file(filename):
     return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
 
 # --- VIDEO COMPRESSION ---
+def compress_video_task(task_id, input_path, output_filename, quality):
+    # Set compression parameters based on quality
+    if quality == 'low':
+        crf, scale = 35, "640:-2"
+    elif quality == 'high':
+        crf, scale = 23, "1920:-2"
+    else: # medium
+        crf, scale = 28, "1280:-2"
+    
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    ffmpeg_bin = FFMPEG_BIN if os.path.exists(FFMPEG_BIN) else 'ffmpeg'
+    cmd = [
+        ffmpeg_bin, '-y', '-i', input_path,
+        '-vf', f'scale={scale}', '-c:v', 'libx264', '-crf', str(crf),
+        '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart',
+        output_path
+    ]
+    
+    downloads[task_id]['progress'] = 30
+    subprocess.run(cmd, check=True, capture_output=True)
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
+
 @app.route('/api/compress-video', methods=['POST'])
 def compress_video():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-    
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
-    quality = request.form.get('quality', 'medium')  # low, medium, high
+    quality = request.form.get('quality', 'medium')
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
     
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_comp_in_{secure_filename(file.filename)}")
+    file.save(input_path)
+    output_filename = f"{task_id}_compressed.mp4"
+
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, compress_video_task, input_path, output_filename, quality)).start()
     
-    try:
-        # Save uploaded file
-        file_id = str(uuid.uuid4())
-        input_filename = f"{file_id}_input.mp4"
-        output_filename = f"{file_id}_compressed.mp4"
-        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        file.save(input_path)
-        
-        # Set compression parameters based on quality
-        if quality == 'low':
-            crf = 35  # Higher CRF = more compression, lower quality
-            scale = "640:-2"
-        elif quality == 'high':
-            crf = 23  # Lower CRF = less compression, higher quality
-            scale = "1920:-2"
-        else:  # medium
-            crf = 28
-            scale = "1280:-2"
-        
-        ffmpeg_bin = FFMPEG_BIN if os.path.exists(FFMPEG_BIN) else 'ffmpeg'
-        cmd = [
-            ffmpeg_bin, '-y', '-i', input_path,
-            '-vf', f'scale={scale}',
-            '-c:v', 'libx264', '-crf', str(crf),
-            '-c:a', 'aac', '-b:a', '128k',
-            '-movflags', '+faststart',
-            output_path
-        ]
-        
-        subprocess.run(cmd, check=True, capture_output=True)
-        
-        # Clean up input file
-        os.remove(input_path)
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
-        })
-        
-    except subprocess.CalledProcessError as e:
-        return jsonify({'error': f"Compression failed: {e.stderr.decode(errors='ignore')}"}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify({'success': True, 'task_id': task_id})
 
 # --- BACKGROUND REMOVAL ---
+def remove_bg_task(task_id, input_path, output_filename):
+    from rembg import remove
+    input_image = Image.open(input_path)
+    downloads[task_id]['progress'] = 40
+    output_image = remove(input_image)
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    output_image.save(output_path, 'PNG')
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
+
 @app.route('/api/remove-background', methods=['POST'])
 def remove_background():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-    
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
     
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_rbg_in.png")
+    file.save(input_path)
+    output_filename = f"{task_id}_nobg.png"
     
-    try:
-        # Lazy load rembg to avoid startup timeout
-        from rembg import remove
-        
-        # Read image
-        input_image = Image.open(file.stream)
-        
-        # Remove background
-        output_image = remove(input_image)
-        
-        # Save to bytes
-        file_id = str(uuid.uuid4())
-        output_filename = f"{file_id}_nobg.png"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        output_image.save(output_path, 'PNG')
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, remove_bg_task, input_path, output_filename)).start()
+    
+    return jsonify({'success': True, 'task_id': task_id})
 
 # --- WATERMARK REMOVAL ---
+def remove_watermark_task(task_id, input_path, output_filename, x, y, width, height):
+    import cv2
+    img = cv2.imread(input_path)
+    if img is None: raise Exception('Could not read image')
+    
+    ih, iw = img.shape[:2]
+    # Normalize if needed
+    if x <= 1.0 and y <= 1.0:
+        x, y = int(x * iw), int(y * ih)
+    if width <= 1.0 and height <= 1.0:
+        width, height = int(width * iw), int(height * ih)
+    
+    x, y, w, h = int(x), int(y), int(width), int(height)
+    x = max(0, min(iw - 1, x))
+    y = max(0, min(ih - 1, y))
+    x2 = max(0, min(iw, x + w))
+    y2 = max(0, min(ih, y + h))
+    
+    mask = np.zeros(img.shape[:2], dtype=np.uint8)
+    mask[y:y2, x:x2] = 255
+    
+    downloads[task_id]['progress'] = 50
+    result = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    cv2.imwrite(output_path, result)
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
+
 @app.route('/api/remove-watermark', methods=['POST'])
 def remove_watermark():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-    
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
-    
-    # Get mask coordinates from form data (x, y, width, height)
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
+
     x = float(request.form.get('x', 0))
     y = float(request.form.get('y', 0))
     width = float(request.form.get('width', 100))
     height = float(request.form.get('height', 50))
     
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_wm_in.png")
+    file.save(input_path)
+    output_filename = f"{task_id}_nowm.png"
     
-    try:
-        # Lazy load cv2 to avoid startup timeout
-        import cv2
-        
-        # Read image with OpenCV
-        file_bytes = np.frombuffer(file.read(), np.uint8)
-        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-        
-        if img is None:
-            return jsonify({'error': 'Could not read image'}), 400
-        
-        ih, iw = img.shape[:2]
-        if x <= 1.0 and y <= 1.0:
-            x = int(x * iw)
-            y = int(y * ih)
-        if width <= 1.0 and height <= 1.0:
-            width = int(width * iw)
-            height = int(height * ih)
-        x = int(x)
-        y = int(y)
-        width = int(width)
-        height = int(height)
-        x = max(0, min(iw - 1, x))
-        y = max(0, min(ih - 1, y))
-        x2 = max(0, min(iw, x + width))
-        y2 = max(0, min(ih, y + height))
-        mask = np.zeros(img.shape[:2], dtype=np.uint8)
-        mask[y:y2, x:x2] = 255
-        
-        # Inpaint to remove watermark
-        result = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
-        
-        # Save result
-        file_id = str(uuid.uuid4())
-        output_filename = f"{file_id}_nowm.png"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        cv2.imwrite(output_path, result)
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, remove_watermark_task, input_path, output_filename, x, y, width, height)).start()
+    
+    return jsonify({'success': True, 'task_id': task_id})
 
 # --- PDF TOOLS ---
 
 from werkzeug.utils import secure_filename
 
 # 1. PDF to Images
+def pdf_to_images_task(task_id, input_path, zip_filename):
+    from pdf2image import convert_from_path
+    import zipfile
+    import shutil
+    
+    file_id = os.path.basename(input_path).split('_')[0]
+    output_dir = os.path.join(DOWNLOAD_FOLDER, f"img_{task_id}")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    downloads[task_id]['progress'] = 20
+    images = convert_from_path(input_path)
+    
+    image_paths = []
+    total = len(images)
+    for i, image in enumerate(images):
+        iname = f"page_{i+1}.png"
+        ipath = os.path.join(output_dir, iname)
+        image.save(ipath, "PNG")
+        image_paths.append(ipath)
+        downloads[task_id]['progress'] = 20 + (i / total) * 60
+        
+    zip_path = os.path.join(DOWNLOAD_FOLDER, zip_filename)
+    with zipfile.ZipFile(zip_path, 'w') as zipf:
+        for img_path in image_paths:
+            zipf.write(img_path, os.path.basename(img_path))
+            
+    if os.path.exists(input_path): os.remove(input_path)
+    shutil.rmtree(output_dir)
+    return zip_filename
+
 @app.route('/api/pdf-to-images', methods=['POST'])
 def pdf_to_images():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-    
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-        
-    try:
-        from pdf2image import convert_from_path
-        import zipfile
-        
-        # Helper for filename
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        
-        # Save input PDF
-        file_id = str(uuid.uuid4())
-        input_filename = f"{file_id}.pdf"
-        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
-        file.save(input_path)
-        
-        # Create output directory for images
-        output_dir = os.path.join(DOWNLOAD_FOLDER, file_id)
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Convert output
-        images = convert_from_path(input_path)
-        
-        image_paths = []
-        for i, image in enumerate(images):
-            image_filename = f"{original_name}_page_{i+1}.png"
-            image_path = os.path.join(output_dir, image_filename)
-            image.save(image_path, "PNG")
-            image_paths.append(image_path)
-            
-        # Create ZIP file
-        zip_filename = f"{original_name}_images.zip"
-        zip_path = os.path.join(DOWNLOAD_FOLDER, zip_filename)
-        
-        with zipfile.ZipFile(zip_path, 'w') as zipf:
-            for img_path in image_paths:
-                zipf.write(img_path, os.path.basename(img_path))
-                
-        # Cleanup
-        os.remove(input_path)
-        import shutil
-        shutil.rmtree(output_dir)
-        
-        log_history('PDF to Images', zip_filename)
-        
-        return jsonify({
-            'success': True,
-            'filename': zip_filename,
-            'download_url': f'/files/{zip_filename}'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
+    
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_in.pdf")
+    file.save(input_path)
+    zip_filename = f"{task_id}_images.zip"
+
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, pdf_to_images_task, input_path, zip_filename)).start()
+    
+    return jsonify({'success': True, 'task_id': task_id})
 
 # 2. Merge PDF
+def merge_pdf_task(task_id, temp_paths, output_filename):
+    from PyPDF2 import PdfMerger
+    merger = PdfMerger()
+    total = len(temp_paths)
+    for i, path in enumerate(temp_paths):
+        merger.append(path)
+        downloads[task_id]['progress'] = (i / total) * 80
+    
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    merger.write(output_path)
+    merger.close()
+    
+    for path in temp_paths:
+        if os.path.exists(path): os.remove(path)
+    return output_filename
+
 @app.route('/api/merge-pdf', methods=['POST'])
 def merge_pdf():
-    if 'files[]' not in request.files:
-        return jsonify({'error': 'No files provided'}), 400
-    
     files = request.files.getlist('files[]')
-    if not files or files[0].filename == '':
-        return jsonify({'error': 'No files selected'}), 400
+    if not files or files[0].filename == '': return jsonify({'error': 'No files provided'}), 400
+    
+    task_id = str(uuid.uuid4())
+    temp_paths = []
+    for i, file in enumerate(files):
+        tpath = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_{i}.pdf")
+        file.save(tpath)
+        temp_paths.append(tpath)
         
-    try:
-        from PyPDF2 import PdfMerger
-        
-        merger = PdfMerger()
-        temp_paths = []
-        
-        file_id = str(uuid.uuid4())
-        # Use first file name as base
-        first_name = os.path.splitext(secure_filename(files[0].filename))[0]
-        
-        for i, file in enumerate(files):
-            temp_filename = f"{file_id}_{i}.pdf"
-            temp_path = os.path.join(DOWNLOAD_FOLDER, temp_filename)
-            file.save(temp_path)
-            temp_paths.append(temp_path)
-            merger.append(temp_path)
-            
-        output_filename = f"{first_name}_merged.pdf"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        merger.write(output_path)
-        merger.close()
-        
-        # Cleanup
-        for path in temp_paths:
-            if os.path.exists(path):
-                os.remove(path)
-                
-        log_history('Merge PDF', output_filename)
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    output_filename = f"{task_id}_merged.pdf"
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, merge_pdf_task, temp_paths, output_filename)).start()
+    
+    return jsonify({'success': True, 'task_id': task_id})
 
 # 3. Extract Pages
+def extract_pages_task(task_id, input_path, output_filename, pages_arg):
+    from PyPDF2 import PdfReader, PdfWriter
+    reader = PdfReader(input_path)
+    writer = PdfWriter()
+    page_indices = set()
+    parts = pages_arg.split(',')
+    for part in parts:
+        part = part.strip()
+        if '-' in part:
+            s, e = map(int, part.split('-'))
+            for i in range(s-1, e): page_indices.add(i)
+        else:
+            page_indices.add(int(part) - 1)
+    for i in sorted(page_indices):
+        if 0 <= i < len(reader.pages):
+            writer.add_page(reader.pages[i])
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    with open(output_path, 'wb') as f:
+        writer.write(f)
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
+
 @app.route('/api/extract-pages', methods=['POST'])
 def extract_pages():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-        
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
-    pages_arg = request.form.get('pages', '') # "1,3,5-7"
+    pages_arg = request.form.get('pages', '')
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
     
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    if not pages_arg:
-        return jsonify({'error': 'No pages specified'}), 400
-        
-    try:
-        from PyPDF2 import PdfReader, PdfWriter
-        
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        
-        # Save input
-        file_id = str(uuid.uuid4())
-        input_filename = f"{file_id}.pdf"
-        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
-        file.save(input_path)
-        
-        reader = PdfReader(input_path)
-        writer = PdfWriter()
-        
-        # Parse pages argument (e.g. "1,3,5-7")
-        page_indices = set()
-        parts = pages_arg.split(',')
-        for part in parts:
-            part = part.strip()
-            if '-' in part:
-                start, end = map(int, part.split('-'))
-                # 1-based to 0-based
-                for i in range(start-1, end):
-                    page_indices.add(i)
-            else:
-                page_indices.add(int(part) - 1)
-                
-        for i in sorted(page_indices):
-            if 0 <= i < len(reader.pages):
-                writer.add_page(reader.pages[i])
-                
-        output_filename = f"{original_name}_extracted.pdf"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        with open(output_path, 'wb') as f:
-            writer.write(f)
-            
-        # Cleanup
-        os.remove(input_path)
-        
-        log_history('Extract Pages', output_filename)
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_in.pdf")
+    file.save(input_path)
+    output_filename = f"{task_id}_extracted.pdf"
+
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, extract_pages_task, input_path, output_filename, pages_arg)).start()
+    return jsonify({'success': True, 'task_id': task_id})
 
 # 4. Compress PDF
+def compress_pdf_task(task_id, input_path, output_filename):
+    import fitz
+    doc = fitz.open(input_path)
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    doc.save(output_path, garbage=4, deflate=True)
+    doc.close()
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
+
 @app.route('/api/compress-pdf', methods=['POST'])
 def compress_pdf():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-        
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-        
-    try:
-        import fitz  # pymupdf
-        
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        
-        # Save input
-        file_id = str(uuid.uuid4())
-        input_filename = f"{file_id}.pdf"
-        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
-        file.save(input_path)
-        
-        doc = fitz.open(input_path)
-        
-        output_filename = f"{original_name}_compressed.pdf"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        # Compress by saving with garbage collection and deflate
-        # Using "deflate" alone might increase size. 
-        # Attempt to downsample images if possible (needs scrubbing) or just standard clean.
-        doc.save(output_path, garbage=4, deflate=True)
-        doc.close()
-        
-        # Check if size actually decreased
-        input_size = os.path.getsize(input_path)
-        output_size = os.path.getsize(output_path)
-        
-        if output_size >= input_size:
-            # Compression failed to reduce size - return original (renamed)
-             # Or try a stronger compression if available? For now, fallback to original to avoid "bigger" file.
-             # Ideally we would downsample images here.
-             import shutil
-             shutil.copy2(input_path, output_path)
-             # Could rename to indicate no compression, but keep as is for consistency.
-        
-        # Cleanup
-        os.remove(input_path)
-        
-        log_history('Compress PDF', output_filename)
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
+    
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_in.pdf")
+    file.save(input_path)
+    output_filename = f"{task_id}_compressed.pdf"
+    
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, compress_pdf_task, input_path, output_filename)).start()
+    return jsonify({'success': True, 'task_id': task_id})
 
 # 5. Lock PDF
+def lock_pdf_task(task_id, input_path, output_filename, password):
+    from PyPDF2 import PdfReader, PdfWriter
+    reader = PdfReader(input_path)
+    writer = PdfWriter()
+    for page in reader.pages: writer.add_page(page)
+    writer.encrypt(password)
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    with open(output_path, 'wb') as f: writer.write(f)
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
+
 @app.route('/api/lock-pdf', methods=['POST'])
 def lock_pdf():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-        
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
     password = request.form.get('password')
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
+    if not password: return jsonify({'error': 'No password provided'}), 400
     
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    if not password:
-        return jsonify({'error': 'No password provided'}), 400
-        
-    try:
-        from PyPDF2 import PdfReader, PdfWriter
-        
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        
-        # Save input
-        file_id = str(uuid.uuid4())
-        input_filename = f"{file_id}.pdf"
-        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
-        file.save(input_path)
-        
-        reader = PdfReader(input_path)
-        writer = PdfWriter()
-        
-        # Add all pages
-        for page in reader.pages:
-            writer.add_page(page)
-            
-        # Encrypt
-        writer.encrypt(password)
-        
-        output_filename = f"{original_name}_locked.pdf"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        with open(output_path, 'wb') as f:
-            writer.write(f)
-            
-        # Cleanup
-        os.remove(input_path)
-        
-        log_history('Lock PDF', output_filename)
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_in.pdf")
+    file.save(input_path)
+    output_filename = f"{task_id}_locked.pdf"
+    
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, lock_pdf_task, input_path, output_filename, password)).start()
+    return jsonify({'success': True, 'task_id': task_id})
 
 # 6. PDF to Word
+def pdf_to_word_task(task_id, input_path, output_filename):
+    from pdf2docx import Converter
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    cv = Converter(input_path)
+    downloads[task_id]['progress'] = 20
+    cv.convert(output_path)
+    cv.close()
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
+
 @app.route('/api/pdf-to-word', methods=['POST'])
 def pdf_to_word():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-        
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-        
-    try:
-        from pdf2docx import Converter
-        
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        
-        # Save input
-        file_id = str(uuid.uuid4())
-        input_filename = f"{file_id}.pdf"
-        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
-        file.save(input_path)
-        
-        output_filename = f"{original_name}.docx"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        # Convert
-        cv = Converter(input_path)
-        cv.convert(output_path)
-        cv.close()
-        
-        # Cleanup
-        os.remove(input_path)
-        
-        log_history('PDF to Word', output_filename)
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
+    
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_in.pdf")
+    file.save(input_path)
+    original_name = os.path.splitext(secure_filename(file.filename))[0]
+    output_filename = f"{task_id}_{original_name}.docx"
+
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, pdf_to_word_task, input_path, output_filename)).start()
+    
+    return jsonify({'success': True, 'task_id': task_id})
 
 # 7. Add Watermark
+def add_watermark_task(task_id, input_path, output_filename, text):
+    from PyPDF2 import PdfReader, PdfWriter
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    import io
+
+    packet = io.BytesIO()
+    can = canvas.Canvas(packet, pagesize=letter)
+    can.setFont("Helvetica", 40)
+    can.setFillColorRGB(0.5, 0.5, 0.5, 0.5)
+    can.saveState()
+    can.translate(300, 400)
+    can.rotate(45)
+    can.drawCentredString(0, 0, text)
+    can.restoreState()
+    can.save()
+    packet.seek(0)
+    
+    watermark_pdf = PdfReader(packet)
+    watermark_page = watermark_pdf.pages[0]
+    reader = PdfReader(input_path)
+    writer = PdfWriter()
+
+    for i, page in enumerate(reader.pages):
+        page.merge_page(watermark_page)
+        writer.add_page(page)
+        downloads[task_id]['progress'] = (i / len(reader.pages)) * 90
+
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    with open(output_path, 'wb') as f:
+        writer.write(f)
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
+
 @app.route('/api/add-watermark', methods=['POST'])
 def add_watermark():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-        
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
     text = request.form.get('text', 'Watermark')
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
+
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_wm_in.pdf")
+    file.save(input_path)
+    output_filename = f"{task_id}_watermarked.pdf"
+
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, add_watermark_task, input_path, output_filename, text)).start()
     
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-        
-    try:
-        from PyPDF2 import PdfReader, PdfWriter
-        from reportlab.pdfgen import canvas
-        from reportlab.lib.pagesizes import letter
-        import io
-        
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        
-        # Save input
-        file_id = str(uuid.uuid4())
-        input_filename = f"{file_id}.pdf"
-        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
-        file.save(input_path)
-        
-        # Create watermark PDF
-        packet = io.BytesIO()
-        can = canvas.Canvas(packet, pagesize=letter)
-        can.setFont("Helvetica", 40)
-        can.setFillColorRGB(0.5, 0.5, 0.5, 0.5) # Grey, semi-transparent
-        
-        # Draw text diagonally
-        can.saveState()
-        can.translate(300, 400)
-        can.rotate(45)
-        can.drawCentredString(0, 0, text)
-        can.restoreState()
-        
-        can.save()
-        packet.seek(0)
-        
-        watermark_pdf = PdfReader(packet)
-        watermark_page = watermark_pdf.pages[0]
-        
-        reader = PdfReader(input_path)
-        writer = PdfWriter()
-        
-        # Overlay watermark on each page
-        for page in reader.pages:
-            page.merge_page(watermark_page)
-            writer.add_page(page)
-            
-        output_filename = f"{original_name}_watermarked.pdf"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        with open(output_path, 'wb') as f:
-            writer.write(f)
-            
-        # Cleanup
-        os.remove(input_path)
-        
-        log_history('Add Watermark', output_filename)
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify({'success': True, 'task_id': task_id})
 
 # 8. Add Signature
+def add_signature_task(task_id, input_path, sig_path, output_filename, x, y, width, height, page_num):
+    from PyPDF2 import PdfReader, PdfWriter
+    from reportlab.pdfgen import canvas
+    import io
+    from PIL import Image
+    
+    reader = PdfReader(input_path)
+    writer = PdfWriter()
+    
+    if not (0 <= page_num < len(reader.pages)):
+        raise Exception('Invalid page index')
+        
+    page_width = float(reader.pages[page_num].mediabox.width)
+    page_height = float(reader.pages[page_num].mediabox.height)
+    
+    def norm(v, size):
+        return float(v) * size if float(v) <= 1.0 else float(v)
+    
+    x = norm(x, page_width)
+    y = norm(y, page_height)
+    w = norm(width, page_width)
+    h = norm(height, page_height)
+    y_pdf = page_height - y - h
+    
+    packet = io.BytesIO()
+    can = canvas.Canvas(packet, pagesize=(page_width, page_height))
+    can.drawImage(sig_path, x, y_pdf, width=w, height=h, mask='auto')
+    can.save()
+    packet.seek(0)
+    
+    sig_pdf = PdfReader(packet)
+    sig_page = sig_pdf.pages[0]
+    
+    for i, page in enumerate(reader.pages):
+        if i == page_num:
+            page.merge_page(sig_page)
+        writer.add_page(page)
+        downloads[task_id]['progress'] = (i / len(reader.pages)) * 90
+
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    with open(output_path, 'wb') as f:
+        writer.write(f)
+        
+    if os.path.exists(input_path): os.remove(input_path)
+    if os.path.exists(sig_path): os.remove(sig_path)
+    return output_filename
+
 @app.route('/api/add-signature', methods=['POST'])
 def add_signature():
     if 'file' not in request.files or 'signature' not in request.files:
         return jsonify({'error': 'File or signature missing'}), 400
+    
     file = request.files['file']
     signature = request.files['signature']
     x = float(request.form.get('x', 400))
@@ -1012,130 +883,57 @@ def add_signature():
     width = float(request.form.get('width', 150))
     height = float(request.form.get('height', 50))
     page_num = int(request.form.get('page', 0))
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    try:
-        from PyPDF2 import PdfReader, PdfWriter
-        from reportlab.pdfgen import canvas
-        from PIL import Image
-        import io
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        file_id = str(uuid.uuid4())
-        input_filename = f"{file_id}.pdf"
-        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
-        file.save(input_path)
-        sig_id = str(uuid.uuid4())
-        sig_path = os.path.join(DOWNLOAD_FOLDER, f"{sig_id}_signature.png")
-        sig_img = Image.open(signature.stream)
-        sig_img.save(sig_path, 'PNG')
-        reader = PdfReader(input_path)
-        writer = PdfWriter()
-        if not (0 <= page_num < len(reader.pages)):
-            return jsonify({'error': 'Invalid page index'}), 400
-        page_width = float(reader.pages[page_num].mediabox.width)
-        page_height = float(reader.pages[page_num].mediabox.height)
-        def norm(v, size):
-            return float(v) * size if float(v) <= 1.0 else float(v)
-        x = norm(x, page_width)
-        y = norm(y, page_height)
-        width = norm(width, page_width)
-        height = norm(height, page_height)
-        y_pdf = page_height - y - height
-        packet = io.BytesIO()
-        can = canvas.Canvas(packet, pagesize=(page_width, page_height))
-        can.drawImage(sig_path, x, y_pdf, width=width, height=height, mask='auto')
-        can.save()
-        packet.seek(0)
-        sig_pdf = PdfReader(packet)
-        sig_page = sig_pdf.pages[0]
-        reader.pages[page_num].merge_page(sig_page)
-        for page in reader.pages:
-            writer.add_page(page)
-        output_filename = f"{original_name}_signed.pdf"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        with open(output_path, 'wb') as f:
-            writer.write(f)
-        if os.path.exists(input_path):
-            os.remove(input_path)
-        if os.path.exists(sig_path):
-            os.remove(sig_path)
-        log_history('Add Signature/Image', output_filename)
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f"/files/{output_filename}"
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_in.pdf")
+    sig_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_sig.png")
+    file.save(input_path)
+    signature.save(sig_path)
+    output_filename = f"{task_id}_signed.pdf"
+
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, add_signature_task, input_path, sig_path, output_filename, x, y, width, height, page_num)).start()
+    
+    return jsonify({'success': True, 'task_id': task_id})
 
 # 9. Edit PDF (Add Text Annotation)
+def edit_pdf_task(task_id, input_path, output_filename, text, x, y, page_num, fontsize, color):
+    import fitz
+    doc = fitz.open(input_path)
+    if 0 <= page_num < len(doc):
+        page = doc[page_num]
+        r, g, b = map(float, color.split(','))
+        if r > 1 or g > 1 or b > 1: r, g, b = r/255, g/255, b/255
+        if x <= 1.0 and y <= 1.0:
+             x = x * page.rect.width
+             y = y * page.rect.height
+        page.insert_text((x, y), text, fontsize=fontsize, color=(r, g, b))
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    doc.save(output_path)
+    doc.close()
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
+
 @app.route('/api/edit-pdf', methods=['POST'])
 def edit_pdf():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-        
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
     text = request.form.get('text', '')
     x = float(request.form.get('x', 100))
     y = float(request.form.get('y', 100))
     page_num = int(request.form.get('page', 0))
     fontsize = int(request.form.get('fontsize', 11))
-    color = request.form.get('color', '0,0,0') # "r,g,b"
+    color = request.form.get('color', '0,0,0')
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
     
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    if not text:
-        return jsonify({'error': 'No text provided'}), 400
-        
-    try:
-        import fitz # pymupdf
-        
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        
-        # Save input
-        file_id = str(uuid.uuid4())
-        input_filename = f"{file_id}.pdf"
-        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
-        file.save(input_path)
-        
-        doc = fitz.open(input_path)
-        if 0 <= page_num < len(doc):
-            page = doc[page_num]
-            
-            # Parse color
-            r, g, b = map(float, color.split(','))
-            # Normalize to 0-1 if > 1
-            if r > 1 or g > 1 or b > 1:
-                r, g, b = r/255, g/255, b/255
-            
-            # Handle coordinates
-            # PyMuPDF (fitz) uses Top-Left origin (0,0).
-            # So if we receive normalized coords (0-1 from Top-Left), we just scale by width/height.
-            if x <= 1.0 and y <= 1.0:
-                 x = x * page.rect.width
-                 y = y * page.rect.height
-                 
-            page.insert_text((x, y), text, fontsize=fontsize, color=(r, g, b))
-            
-        output_filename = f"{original_name}_edited.pdf"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        doc.save(output_path)
-        doc.close()
-        
-        # Cleanup
-        os.remove(input_path)
-        
-        log_history('Edit PDF', output_filename)
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_in.pdf")
+    file.save(input_path)
+    output_filename = f"{task_id}_edited.pdf"
+    
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, edit_pdf_task, input_path, output_filename, text, x, y, page_num, fontsize, color)).start()
+    return jsonify({'success': True, 'task_id': task_id})
 
 import json
 from datetime import datetime
@@ -1182,161 +980,117 @@ def get_history():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+def img_to_pdf_task(task_id, input_path, output_filename):
+    import img2pdf
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    with open(output_path, "wb") as f:
+        f.write(img2pdf.convert(input_path))
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
+
 @app.route('/api/img-to-pdf', methods=['POST'])
 def img_to_pdf():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-        
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
+    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
+    
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_{secure_filename(file.filename)}")
+    file.save(input_path)
+    output_filename = f"{task_id}_converted.pdf"
+
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, img_to_pdf_task, input_path, output_filename)).start()
+    return jsonify({'success': True, 'task_id': task_id})
+
+def word_to_pdf_task(task_id, input_path, output_filename):
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    input_path_abs = os.path.abspath(input_path)
+    output_path_abs = os.path.abspath(output_path)
+    
+    if os.name == 'nt':
+        from docx2pdf import convert
+        convert(input_path_abs, output_path_abs)
+    else:
+        import subprocess
+        cmd = ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', DOWNLOAD_FOLDER, input_path]
+        subprocess.run(cmd, check=True)
+        lo_output = os.path.splitext(input_path)[0] + ".pdf"
+        if os.path.exists(lo_output): os.rename(lo_output, output_path)
         
-    try:
-        import img2pdf
-        from PIL import Image
-        
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        file_id = str(uuid.uuid4())
-        
-        input_path = os.path.join(DOWNLOAD_FOLDER, f"{file_id}_{secure_filename(file.filename)}")
-        file.save(input_path)
-        
-        output_filename = f"{original_name}_converted.pdf"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        with open(output_path, "wb") as f:
-            f.write(img2pdf.convert(input_path))
-            
-        os.remove(input_path)
-        log_history('Image to PDF', output_filename)
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}',
-            'storage_path': os.path.abspath(output_path)
-        })
-    except Exception as e:
-        log_history('Image to PDF', file.filename, 'failed')
-        return jsonify({'error': str(e)}), 500
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
 
 @app.route('/api/word-to-pdf', methods=['POST'])
 def word_to_pdf():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-        
+    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
-    if not file.filename.endswith(('.docx', '.doc')):
-        return jsonify({'error': 'Invalid file type. Please upload a Word document.'}), 400
+    if not file.filename.endswith(('.docx', '.doc')): return jsonify({'error': 'Invalid file type'}), 400
+    
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_{secure_filename(file.filename)}")
+    file.save(input_path)
+    output_filename = f"{task_id}_converted.pdf"
+
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, word_to_pdf_task, input_path, output_filename)).start()
+    return jsonify({'success': True, 'task_id': task_id})
+
+def ppt_to_pdf_task(task_id, input_path, output_filename):
+    output_path = os.path.abspath(os.path.join(DOWNLOAD_FOLDER, output_filename))
+    if os.name == 'nt':
+        import comtypes.client
+        powerpoint = comtypes.client.CreateObject("Powerpoint.Application")
+        deck = powerpoint.Presentations.Open(input_path)
+        deck.SaveAs(output_path, 32)
+        deck.Close()
+        powerpoint.Quit()
+    else:
+        import subprocess
+        cmd = ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', DOWNLOAD_FOLDER, input_path]
+        subprocess.run(cmd, check=True)
+        lo_output = os.path.splitext(input_path)[0] + ".pdf"
+        if os.path.exists(lo_output): os.rename(lo_output, output_path)
         
-    try:
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        file_id = str(uuid.uuid4())
-        
-        input_filename = f"{file_id}_{secure_filename(file.filename)}"
-        input_path = os.path.join(DOWNLOAD_FOLDER, input_filename)
-        input_path_abs = os.path.abspath(input_path)
-        file.save(input_path)
-        
-        output_filename = f"{original_name}_converted.pdf"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        output_path_abs = os.path.abspath(output_path)
-        
-        if os.name == 'nt':
-            from docx2pdf import convert
-            convert(input_path_abs, output_path_abs)
-        else:
-            # Linux (Render) - Use LibreOffice
-            import subprocess
-            # libreoffice --headless --convert-to pdf --outdir <dir> <file>
-            cmd = ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', DOWNLOAD_FOLDER, input_path]
-            subprocess.run(cmd, check=True)
-            # LibreOffice output filename is same as input basename .pdf
-            # Check if output exists (LibreOffice might name it slightly differently)
-            # The expected output is input_filename replaced extension with .pdf
-            # Our input was f"{file_id}_{secure_filename(file.filename)}"
-            # expected output name by LO: f"{file_id}_{secure_filename(file.filename).rsplit('.',1)[0]}.pdf"
-            
-            # We want to rename it to our standard output_filename
-            lo_output = os.path.splitext(input_path)[0] + ".pdf"
-            if os.path.exists(lo_output):
-                os.rename(lo_output, output_path)
-            
-        if os.path.exists(input_path): os.remove(input_path)
-        log_history('Word to PDF', output_filename)
-        
-        return jsonify({
-            'success': True,
-            'filename': output_filename,
-            'download_url': f'/files/{output_filename}',
-            'storage_path': output_path_abs
-        })
-    except Exception as e:
-        log_history('Word to PDF', file.filename, 'failed')
-        return jsonify({'error': str(e)}), 500
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
 
 @app.route('/api/ppt-to-pdf', methods=['POST'])
 def ppt_to_pdf():
     if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
-    try:
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        file_id = str(uuid.uuid4())
-        input_path = os.path.abspath(os.path.join(DOWNLOAD_FOLDER, f"{file_id}_{secure_filename(file.filename)}"))
-        file.save(input_path)
-        
-        output_filename = f"{original_name}_converted.pdf"
-        output_path = os.path.abspath(os.path.join(DOWNLOAD_FOLDER, output_filename))
-        
-        if os.name == 'nt':
-            import comtypes.client
-            powerpoint = comtypes.client.CreateObject("Powerpoint.Application")
-            # powerpoint.Visible = 1
-            deck = powerpoint.Presentations.Open(input_path)
-            deck.SaveAs(output_path, 32)
-            deck.Close()
-            powerpoint.Quit()
-        else:
-            # Linux (Render) - Use LibreOffice
-            import subprocess
-            cmd = ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', DOWNLOAD_FOLDER, input_path]
-            subprocess.run(cmd, check=True)
-            
-            # Rename output to match our convention
-            lo_output = os.path.splitext(input_path)[0] + ".pdf"
-            if os.path.exists(lo_output):
-                os.rename(lo_output, output_path)
-            
-        if os.path.exists(input_path): os.remove(input_path)
-        log_history('PPT to PDF', output_filename)
-        return jsonify({'success': True, 'filename': output_filename, 'download_url': f'/files/{output_filename}', 'storage_path': output_path})
-    except Exception as e:
-        log_history('PPT to PDF', file.filename, 'failed')
-        return jsonify({'error': str(e)}), 500
+    
+    task_id = str(uuid.uuid4())
+    input_path = os.path.abspath(os.path.join(DOWNLOAD_FOLDER, f"{task_id}_{secure_filename(file.filename)}"))
+    file.save(input_path)
+    output_filename = f"{task_id}_converted.pdf"
+
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, ppt_to_pdf_task, input_path, output_filename)).start()
+    return jsonify({'success': True, 'task_id': task_id})
+
+def unlock_pdf_task(task_id, input_path, output_filename, password):
+    import pikepdf
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    with pikepdf.open(input_path, password=password) as pdf:
+        pdf.save(output_path)
+    if os.path.exists(input_path): os.remove(input_path)
+    return output_filename
 
 @app.route('/api/unlock-pdf', methods=['POST'])
 def unlock_pdf():
     file = request.files.get('file')
     password = request.form.get('password')
     if not file or not password: return jsonify({'error': 'Missing file or password'}), 400
-    try:
-        import pikepdf
-        original_name = os.path.splitext(secure_filename(file.filename))[0]
-        input_path = os.path.join(DOWNLOAD_FOLDER, f"{uuid.uuid4()}.pdf")
-        file.save(input_path)
-        
-        output_filename = f"{original_name}_unlocked.pdf"
-        output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
-        
-        with pikepdf.open(input_path, password=password) as pdf:
-            pdf.save(output_path)
-            
-        os.remove(input_path)
-        log_history('Unlock PDF', output_filename)
-        return jsonify({'success': True, 'filename': output_filename, 'download_url': f'/files/{output_filename}', 'storage_path': os.path.abspath(output_path)})
-    except Exception as e:
-        log_history('Unlock PDF', file.filename, 'failed')
-        return jsonify({'error': str(e)}), 500
+    
+    task_id = str(uuid.uuid4())
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_in.pdf")
+    file.save(input_path)
+    output_filename = f"{task_id}_unlocked.pdf"
+
+    downloads[task_id] = {'status': 'pending', 'progress': 0}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, unlock_pdf_task, input_path, output_filename, password)).start()
+    return jsonify({'success': True, 'task_id': task_id})
 
 @app.route('/api/draw-pdf', methods=['POST'])
 def draw_pdf():

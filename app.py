@@ -438,9 +438,14 @@ def convert_video():
     if file.filename == '': return jsonify({'error': 'No file selected'}), 400
 
     task_id = str(uuid.uuid4())
-    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_input_{secure_filename(file.filename)}")
+    original_name = os.path.splitext(secure_filename(file.filename))[0]
+    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_in_{secure_filename(file.filename)}")
     file.save(input_path)
-    output_filename = f"{task_id}.mp3"
+    output_filename = f"{original_name}.mp3"
+    
+    # If file exists, append task_id to avoid conflict
+    if os.path.exists(os.path.join(DOWNLOAD_FOLDER, output_filename)):
+        output_filename = f"{original_name}_{task_id[:8]}.mp3"
     
     downloads[task_id] = {'status': 'pending', 'progress': 0}
     threading.Thread(target=tool_worker_wrapper, args=(task_id, video_to_audio_task, input_path, output_filename)).start()
@@ -497,11 +502,14 @@ def compress_video_task(task_id, input_path, output_filename, quality):
     
     # Set compression parameters based on quality
     if quality == 'low':
-        crf, scale, preset = 35, "640:-2", "veryfast"
+        # ultrafast: extremely fast, larger file size
+        crf, scale, preset = 30, "640:-2", "ultrafast"
     elif quality == 'high':
-        crf, scale, preset = 23, "1920:-2", "medium"
+        # superfast: very fast, better quality
+        crf, scale, preset = 23, "1920:-2", "superfast"
     else: # medium
-        crf, scale, preset = 28, "1280:-2", "fast"
+        # ultrafast: balance default
+        crf, scale, preset = 26, "1280:-2", "ultrafast"
     
     output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
     ffmpeg_bin = FFMPEG_BIN if os.path.exists(FFMPEG_BIN) else 'ffmpeg'
@@ -537,13 +545,24 @@ def compress_video_task(task_id, input_path, output_filename, quality):
     process = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, universal_newlines=True)
     
     for line in process.stderr:
-        if total_duration > 0:
-            time_match = re.search(r'time=(\d+):(\d+):(\d+\.\d+)', line)
-            if time_match:
-                h, m, s = time_match.groups()
-                current_time = int(h) * 3600 + int(m) * 60 + float(s)
-                progress = min(95, 20 + int((current_time / total_duration) * 75))
-                downloads[task_id]['progress'] = progress
+        # Try standard time=HH:MM:SS.ms format
+        time_match = re.search(r'time=(\d+):(\d+):(\d+\.\d+)', line)
+        if time_match and total_duration > 0:
+            h, m, s = time_match.groups()
+            current_time = int(h) * 3600 + int(m) * 60 + float(s)
+            progress = min(95, 20 + int((current_time / total_duration) * 75))
+            downloads[task_id]['progress'] = progress
+        # Fallback for simpler format (seconds only)
+        elif 'time=' in line and total_duration > 0:
+            try:
+                # rare case where time might be just seconds
+                sec_match = re.search(r'time=(\d+\.\d+)', line)
+                if sec_match:
+                    current_time = float(sec_match.group(1))
+                    progress = min(95, 20 + int((current_time / total_duration) * 75))
+                    downloads[task_id]['progress'] = progress
+            except:
+                pass
     
     process.wait()
     
@@ -563,9 +582,14 @@ def compress_video():
     if file.filename == '': return jsonify({'error': 'No file selected'}), 400
     
     task_id = str(uuid.uuid4())
+    original_name = os.path.splitext(secure_filename(file.filename))[0]
     input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_comp_in_{secure_filename(file.filename)}")
     file.save(input_path)
-    output_filename = f"{task_id}_compressed.mp4"
+    output_filename = f"{original_name}_compressed.mp4"
+    
+    # If file exists, append task_id to avoid conflict
+    if os.path.exists(os.path.join(DOWNLOAD_FOLDER, output_filename)):
+        output_filename = f"{original_name}_{task_id[:8]}_compressed.mp4"
 
     downloads[task_id] = {'status': 'pending', 'progress': 0}
     threading.Thread(target=tool_worker_wrapper, args=(task_id, compress_video_task, input_path, output_filename, quality)).start()

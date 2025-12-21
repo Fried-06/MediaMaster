@@ -1139,7 +1139,8 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
 
             const originalButtonHtml = processBtn.innerHTML;
             processBtn.disabled = true;
-            processBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';
+            // Show "Uploading..." first because the fetch request includes the file upload
+            processBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up fa-bounce"></i> Téléchargement...';
             statusArea.classList.add('hidden');
 
             try {

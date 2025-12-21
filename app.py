@@ -49,6 +49,9 @@ FFMPEG_BIN = os.path.join(os.getcwd(), 'bin', 'ffmpeg.exe') if os.name == 'nt' e
 if os.path.exists(FFMPEG_BIN):
     os.environ['IMAGEIO_FFMPEG_EXE'] = FFMPEG_BIN
 
+# Reviews storage file
+REVIEWS_FILE = os.path.join(os.getcwd(), 'reviews.json')
+
 @app.route('/')
 def index():
     return send_from_directory('.', 'medimaster.html')

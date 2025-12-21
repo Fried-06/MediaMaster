@@ -1078,6 +1078,55 @@ def log_history(action, filename, status='success'):
     except Exception as e:
         print(f"Error logging history: {e}")
 
+@app.route('/api/reviews', methods=['GET', 'POST'])
+def handle_reviews():
+    from datetime import datetime # Added as per instruction
+    if request.method == 'GET':
+        try:
+            if os.path.exists(REVIEWS_FILE):
+                with open(REVIEWS_FILE, 'r') as f:
+                    reviews = json.load(f)
+                    return jsonify(reviews)
+            return jsonify([])
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            if not data or 'rating' not in data or 'comment' not in data:
+                return jsonify({'error': 'Missing rating or comment'}), 400
+
+            rating = data['rating']
+            comment = data['comment']
+            
+            if not (1 <= rating <= 5):
+                return jsonify({'error': 'Rating must be between 1 and 5'}), 400
+
+            review_entry = {
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'rating': rating,
+                'comment': comment
+            }
+
+            reviews = []
+            if os.path.exists(REVIEWS_FILE):
+                with open(REVIEWS_FILE, 'r') as f:
+                    try:
+                        reviews = json.load(f)
+                    except json.JSONDecodeError:
+                        pass # File might be empty or corrupted, start fresh
+
+            reviews.insert(0, review_entry) # Prepend new review
+            reviews = reviews[:100] # Keep last 100 reviews
+
+            with open(REVIEWS_FILE, 'w') as f:
+                json.dump(reviews, f, indent=4)
+            
+            return jsonify({'success': True, 'message': 'Review submitted successfully'}), 201
+        except Exception as e:
+            print(f"Error submitting review: {e}")
+            return jsonify({'error': 'Failed to submit review', 'details': str(e)}), 500
+
 @app.route('/api/history', methods=['GET'])
 def get_history():
     try:

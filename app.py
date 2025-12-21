@@ -13,6 +13,18 @@ from PIL import Image
 import re
 import zipfile
 # rembg and cv2 are loaded lazily to avoid startup timeout
+# Preload rembg session for faster background removal
+REMBG_SESSION = None
+def get_rembg_session():
+    global REMBG_SESSION
+    if REMBG_SESSION is None:
+        try:
+            from rembg import new_session
+            REMBG_SESSION = new_session("u2net")
+            print("Rembg model preloaded successfully")
+        except Exception as e:
+            print(f"Failed to preload rembg: {e}")
+    return REMBG_SESSION
 
 # --- DNS WORKAROUND FOR HUGGING FACE ---
 # Use Google DNS (8.8.8.8) to resolve hostnames
@@ -379,9 +391,14 @@ def tool_worker_wrapper(task_id, func, *args, **kwargs):
         downloads[task_id]['error'] = str(e)
 
 def video_to_audio_task(task_id, input_path, output_filename):
-    """Fast video to audio conversion using FFmpeg directly"""
+    """Fast video to audio conversion using FFmpeg directly with cancellation support"""
     import subprocess
     import re
+    
+    # Check cancellation before starting
+    if downloads[task_id].get('cancel_event'):
+        if os.path.exists(input_path): os.remove(input_path)
+        return None
     
     output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
     ffmpeg_bin = FFMPEG_BIN if os.path.exists(FFMPEG_BIN) else 'ffmpeg'
@@ -401,21 +418,30 @@ def video_to_audio_task(task_id, input_path, output_filename):
     
     downloads[task_id]['progress'] = 15
     
-    # Fast audio extraction with FFmpeg
+    # Fast audio extraction with FFmpeg (optimized settings)
     cmd = [
         ffmpeg_bin, '-i', input_path,
         '-vn',  # No video
         '-acodec', 'libmp3lame',  # MP3 codec
-        '-q:a', '2',  # High quality (VBR)
+        '-q:a', '4',  # Good quality, faster (was 2)
         '-y',  # Overwrite
         output_path
     ]
     
     # Run with progress tracking
     process = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, universal_newlines=True)
+    downloads[task_id]['process'] = process  # Store for cancellation
     
     # Parse progress from FFmpeg output
     for line in process.stderr:
+        # Check for cancellation during processing
+        if downloads[task_id].get('cancel_event'):
+            process.terminate()
+            process.wait()
+            if os.path.exists(input_path): os.remove(input_path)
+            if os.path.exists(output_path): os.remove(output_path)
+            return None
+        
         if total_duration > 0:
             time_match = re.search(r'time=(\d+):(\d+):(\d+\.\d+)', line)
             if time_match:
@@ -539,15 +565,24 @@ def compress_video_task(task_id, input_path, output_filename, quality):
         '-preset', preset,  # Faster encoding
         '-crf', str(crf),
         '-c:a', 'aac',
-        '-b:a', '128k',
+        '-b:a', '96k',  # Reduced from 128k for speed
         '-movflags', '+faststart',
         output_path
     ]
     
     # Run with progress tracking
     process = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, universal_newlines=True)
+    downloads[task_id]['process'] = process  # Store for cancellation
     
     for line in process.stderr:
+        # Check for cancellation during processing
+        if downloads[task_id].get('cancel_event'):
+            process.terminate()
+            process.wait()
+            if os.path.exists(input_path): os.remove(input_path)
+            if os.path.exists(output_path): os.remove(output_path)
+            return None
+        
         # Try standard time=HH:MM:SS.ms format
         time_match = re.search(r'time=(\d+):(\d+):(\d+\.\d+)', line)
         if time_match and total_duration > 0:
@@ -558,7 +593,6 @@ def compress_video_task(task_id, input_path, output_filename, quality):
         # Fallback for simpler format (seconds only)
         elif 'time=' in line and total_duration > 0:
             try:
-                # rare case where time might be just seconds
                 sec_match = re.search(r'time=(\d+\.\d+)', line)
                 if sec_match:
                     current_time = float(sec_match.group(1))
@@ -602,9 +636,30 @@ def compress_video():
 # --- BACKGROUND REMOVAL ---
 def remove_bg_task(task_id, input_path, output_filename):
     from rembg import remove
+    
+    # Check cancellation before starting heavy work
+    if downloads[task_id].get('cancel_event'):
+        if os.path.exists(input_path): os.remove(input_path)
+        return None
+    
     input_image = Image.open(input_path)
+    downloads[task_id]['progress'] = 20
+    
+    # Use preloaded session for 5-10x faster processing
+    session = get_rembg_session()
     downloads[task_id]['progress'] = 40
-    output_image = remove(input_image)
+    
+    if session:
+        output_image = remove(input_image, session=session)
+    else:
+        output_image = remove(input_image)  # Fallback
+    
+    # Check cancellation after processing
+    if downloads[task_id].get('cancel_event'):
+        if os.path.exists(input_path): os.remove(input_path)
+        return None
+    
+    downloads[task_id]['progress'] = 90
     output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
     output_image.save(output_path, 'PNG')
     if os.path.exists(input_path): os.remove(input_path)

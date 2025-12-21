@@ -455,7 +455,24 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
                     <div style="width: 100%; background: rgba(255,255,255,0.1); height: 4px; border-radius: 2px; margin-top: 5px;">
                         <div style="width: ${progress}%; background: var(--primary); height: 100%; border-radius: 2px; transition: width 0.3s;"></div>
                     </div>
+                    <button class="cancel-tool-btn" style="margin-top: 10px; padding: 8px 16px; background: var(--secondary); border: none; border-radius: 8px; color: white; cursor: pointer;">
+                        <i class="fa-solid fa-xmark"></i> Annuler
+                    </button>
                 `;
+                
+                // Attach cancel handler
+                const cancelBtn = statusElement.querySelector('.cancel-tool-btn');
+                if (cancelBtn && !cancelBtn.hasAttribute('data-listener')) {
+                    cancelBtn.setAttribute('data-listener', 'true');
+                    cancelBtn.addEventListener('click', async () => {
+                        try {
+                            await fetch(`/api/download/cancel/${taskId}`, { method: 'POST' });
+                            statusElement.innerHTML = `<p style="color: var(--secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Annulation en cours...</p>`;
+                        } catch (e) {
+                            console.error('Cancel error:', e);
+                        }
+                    });
+                }
             } else if (data.status === 'completed') {
                 clearInterval(toolPollInterval);
                 buttonElement.disabled = false;
@@ -475,7 +492,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
                 clearInterval(toolPollInterval);
                 buttonElement.disabled = false;
                 buttonElement.innerHTML = originalButtonHtml;
-                statusElement.innerHTML = `<p style="color: var(--secondary);">Action annulée.</p>`;
+                statusElement.innerHTML = `<p style="color: var(--secondary);"><i class="fa-solid fa-ban"></i> Action annulée.</p>`;
             }
         } catch (err) {
             console.error('Tool Polling Error:', err);

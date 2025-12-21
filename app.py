@@ -1093,39 +1093,58 @@ def handle_reviews():
     elif request.method == 'POST':
         try:
             data = request.get_json()
-            if not data or 'rating' not in data or 'comment' not in data:
-                return jsonify({'error': 'Missing rating or comment'}), 400
-
-            rating = data['rating']
-            comment = data['comment']
+            if not data:
+                return jsonify({'error': 'No data provided'}), 400
             
-            if not (1 <= rating <= 5):
-                return jsonify({'error': 'Rating must be between 1 and 5'}), 400
+            # Get fields from frontend
+            name = data.get('name', 'Anonyme')
+            text = data.get('text', '')
+            rating = data.get('rating', 5)
+            
+            # Validation
+            if not text or len(text.strip()) == 0:
+                return jsonify({'error': 'Le texte de l\'avis est requis'}), 400
+            
+            if not isinstance(rating, int) or not (1 <= rating <= 5):
+                return jsonify({'error': 'La note doit être entre 1 et 5'}), 400
+
+            # Generate initials
+            def get_initials(name):
+                parts = name.strip().split()
+                if not parts: return "A"
+                if len(parts) == 1:
+                    return parts[0][0].upper()
+                return (parts[0][0] + parts[1][0]).upper()
 
             review_entry = {
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'id': str(uuid.uuid4()),
+                'name': name,
+                'text': text,
                 'rating': rating,
-                'comment': comment
+                'initials': get_initials(name),
+                'date': datetime.now().isoformat()
             }
 
             reviews = []
             if os.path.exists(REVIEWS_FILE):
-                with open(REVIEWS_FILE, 'r') as f:
+                with open(REVIEWS_FILE, 'r', encoding='utf-8') as f:
                     try:
                         reviews = json.load(f)
                     except json.JSONDecodeError:
-                        pass # File might be empty or corrupted, start fresh
+                        pass
 
-            reviews.insert(0, review_entry) # Prepend new review
-            reviews = reviews[:100] # Keep last 100 reviews
+            reviews.insert(0, review_entry)
+            reviews = reviews[:100]
 
-            with open(REVIEWS_FILE, 'w') as f:
-                json.dump(reviews, f, indent=4)
+            with open(REVIEWS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(reviews, f, indent=2, ensure_ascii=False)
             
-            return jsonify({'success': True, 'message': 'Review submitted successfully'}), 201
+            return jsonify({'success': True, 'review': review_entry}), 201
         except Exception as e:
             print(f"Error submitting review: {e}")
-            return jsonify({'error': 'Failed to submit review', 'details': str(e)}), 500
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': 'Erreur serveur', 'details': str(e)}), 500
 
 @app.route('/api/history', methods=['GET'])
 def get_history():

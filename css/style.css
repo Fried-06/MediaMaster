@@ -1671,69 +1671,308 @@ p, span, h1, h2, h3, a {
     color: var(--text-muted);
 }
 
-/* SECTION ANIMATIONS */
+/* ==============================================
+   ANIMATIONS PAR SECTION - Effets Visuels Avancés
+   ============================================== */
 
-/* Download: Floating Cloud Items */
-#download-section .hero-text h1::after {
-    content: '☁️';
-    display: inline-block;
-    animation: float 3s ease-in-out infinite;
-    margin-left: 10px;
+/* --- SECTION TÉLÉCHARGEMENT : Fichiers volant vers un nuage --- */
+#download-section .hero-text {
+    position: relative;
 }
 
-@keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+/* Animation du conteneur de fichiers volants */
+.flying-files-animation {
+    position: absolute;
+    right: -100px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 120px;
+    height: 120px;
+    pointer-events: none;
 }
 
-/* Convert: Rotating Gears */
-#convert-section .hero-text h1::after {
-    content: '⚙️';
-    display: inline-block;
-    animation: spin 4s linear infinite;
-    margin-left: 10px;
+/* Nuage de destination (SVG inline dans le HTML) */
+.cloud-target {
+    animation: float-cloud 4s ease-in-out infinite;
 }
 
-@keyframes spin { 100% { transform: rotate(360deg); } }
-
-/* Images: Pulse Effect */
-#images-section .hero-text h1::after {
-    content: '🖼️';
-    display: inline-block;
-    animation: pulse-img 2s infinite;
-    margin-left: 10px;
+@keyframes float-cloud {
+    0%, 100% { 
+        transform: translateY(0) scale(1); 
+    }
+    50% { 
+        transform: translateY(-10px) scale(1.05); 
+    }
 }
 
-@keyframes pulse-img {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
+/* Fichiers individuels qui volent vers le nuage */
+.file-item {
+    position: absolute;
+    width: 20px;
+    height: 24px;
+    opacity: 0;
+    animation: fly-to-cloud 3s ease-in-out infinite;
 }
 
-/* Utilities: Unlocking Lock */
-#tools-section .hero-text h1::after {
-    content: '🔓';
-    display: inline-block;
-    animation: unlock 2s ease-in-out infinite;
-    margin-left: 10px;
+.file-item:nth-child(1) {
+    left: 10px;
+    animation-delay: 0s;
 }
 
-@keyframes unlock {
-    0%, 100% { transform: rotate(0deg); }
-    20% { transform: rotate(-10deg); }
-    40% { transform: rotate(10deg); }
-    60% { transform: rotate(-5deg); filter: hue-rotate(90deg); }
+.file-item:nth-child(2) {
+    left: 30px;
+    animation-delay: 0.4s;
 }
 
-/* Bureautique: Stacking Papers */
-#bureautique-section .hero-text h1::after {
-    content: '📄';
-    display: inline-block;
-    animation: stack 2s infinite;
-    margin-left: 10px;
+.file-item:nth-child(3) {
+    left: 50px;
+    animation-delay: 0.8s;
 }
 
-@keyframes stack {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    50% { transform: translateY(-5px) rotate(5deg); box-shadow: 2px 2px 0 rgba(255,255,255,0.2); }
+/* Keyframe : fichier apparaît, vole vers le haut, disparaît */
+@keyframes fly-to-cloud {
+    0% {
+        transform: translateY(50px) scale(0.8);
+        opacity: 0;
+    }
+    20% {
+        opacity: 1;
+    }
+    80% {
+        transform: translateY(-60px) scale(1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(-60px) scale(0.5);
+        opacity: 0;
+    }
+}
+
+/* --- SECTION CONVERSION : Transformation onde sonore ↔ fichier --- */
+#convert-section .hero-text {
+    position: relative;
+}
+
+/* Conteneur de l'animation de transformation */
+.transform-animation {
+    position: absolute;
+    right: -100px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100px;
+    height: 80px;
+}
+
+/* Onde sonore (barres verticales animées) */
+.sound-wave {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    height: 100%;
+    animation: morph-to-file 4s ease-in-out infinite;
+}
+
+/* Barres de l'onde sonore */
+.wave-bar {
+    width: 3px;
+    background: linear-gradient(to top, var(--primary), var(--secondary));
+    border-radius: 2px;
+    animation: wave-pulse 0.8s ease-in-out infinite;
+}
+
+/* Chaque barre a un délai différent pour l'effet d'onde */
+.wave-bar:nth-child(1) { height: 20%; animation-delay: 0s; }
+.wave-bar:nth-child(2) { height: 40%; animation-delay: 0.1s; }
+.wave-bar:nth-child(3) { height: 70%; animation-delay: 0.2s; }
+.wave-bar:nth-child(4) { height: 90%; animation-delay: 0.3s; }
+.wave-bar:nth-child(5) { height: 60%; animation-delay: 0.4s; }
+.wave-bar:nth-child(6) { height: 30%; animation-delay: 0.5s; }
+
+@keyframes wave-pulse {
+    0%, 100% { transform: scaleY(1); opacity: 0.8; }
+    50% { transform: scaleY(1.5); opacity: 1; }
+}
+
+/* Animation de transformation (onde → fichier) */
+@keyframes morph-to-file {
+    0%, 45% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+    50% {
+        opacity: 0.3;
+        transform: scale(0.5) rotate(180deg);
+    }
+    55%, 100% {
+        opacity: 1;
+        transform: scale(1) rotate(360deg);
+    }
+}
+
+/* --- SECTION UTILITAIRES : QR Code avec effet de scan --- */
+#tools-section .hero-text {
+    position: relative;
+}
+
+/* Conteneur du QR code animé */
+.qr-scan-animation {
+    position: absolute;
+    right: -100px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 80px;
+    height: 80px;
+}
+
+/* QR Code (grille de carrés) */
+.qr-code-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+    width: 100%;
+    height: 100%;
+    background: white;
+    padding: 8px;
+    border-radius: 8px;
+    position: relative;
+}
+
+/* Carrés individuels du QR code */
+.qr-pixel {
+    background: #000;
+    border-radius: 1px;
+    animation: qr-blink 2s infinite;
+}
+
+/* Pixels aléatoires clignotent */
+.qr-pixel:nth-child(odd) { animation-delay: 0.2s; }
+.qr-pixel:nth-child(3n) { animation-delay: 0.4s; }
+
+@keyframes qr-blink {
+    0%, 80% { opacity: 1; }
+    85%, 95% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+
+/* Ligne de scan qui traverse le QR code */
+.scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, 
+        transparent, 
+        var(--primary), 
+        transparent
+    );
+    box-shadow: 0 0 10px var(--primary);
+    animation: scan-move 2s linear infinite;
+}
+
+@keyframes scan-move {
+    0% { 
+        top: 0; 
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% { 
+        top: 100%; 
+        opacity: 0;
+    }
+}
+
+/* --- SECTION BUREAUTIQUE : Feuilles de papier s'organisant --- */
+#bureautique-section .hero-text {
+    position: relative;
+}
+
+/* Conteneur de l'empilement de feuilles */
+.papers-stack-animation {
+    position: absolute;
+    right: -100px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 70px;
+    height: 90px;
+    position: relative;
+}
+
+/* Feuille de papier individuelle */
+.paper-sheet {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 4px;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Chaque feuille a une position et animation différente */
+.paper-sheet:nth-child(1) {
+    z-index: 3;
+    animation: organize-paper1 3s ease-in-out infinite;
+}
+
+.paper-sheet:nth-child(2) {
+    z-index: 2;
+    animation: organize-paper2 3s ease-in-out infinite;
+}
+
+.paper-sheet:nth-child(3) {
+    z-index: 1;
+    animation: organize-paper3 3s ease-in-out infinite;
+}
+
+/* Animation : feuille 1 (dessus) reste stable mais bouge légèrement */
+@keyframes organize-paper1 {
+    0%, 100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    50% {
+        transform: translate(2px, -3px) rotate(1deg);
+    }
+}
+
+/* Animation : feuille 2 (milieu) arrive de la droite et se place */
+@keyframes organize-paper2 {
+    0% {
+        transform: translate(40px, 10px) rotate(15deg);
+        opacity: 0.5;
+    }
+    50%, 100% {
+        transform: translate(4px, 4px) rotate(-2deg);
+        opacity: 1;
+    }
+}
+
+/* Animation : feuille 3 (dessous) arrive de la gauche et se place */
+@keyframes organize-paper3 {
+    0% {
+        transform: translate(-40px, 20px) rotate(-15deg);
+        opacity: 0.3;
+    }
+    50%, 100% {
+        transform: translate(8px, 8px) rotate(3deg);
+        opacity: 0.8;
+    }
+}
+
+/* ==============================================
+   ANIMATIONS RESPONSIVE - Masquage sur mobile
+   ============================================== */
+@media (max-width: 768px) {
+    /* Sur mobile, on masque les animations pour économiser les ressources */
+    .flying-files-animation,
+    .transform-animation,
+    .qr-scan-animation,
+    .papers-stack-animation {
+        display: none;
+    }
 }

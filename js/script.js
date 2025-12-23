@@ -129,20 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btn) btn.click();
     };
 
-    // --- CONVERTER MODE SWITCHING ---
-    const modeBtns = document.querySelectorAll('.mode-btn');
-    const modeContents = document.querySelectorAll('.mode-content');
-
-    modeBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            modeBtns.forEach(b => b.classList.remove('active'));
-            modeContents.forEach(c => c.classList.remove('active'));
-
-            btn.classList.add('active');
-            const modeId = btn.dataset.mode + '-mode';
-            document.getElementById(modeId).classList.add('active');
-        });
-    });
+    // Converter logic moved to line 500+
 
     // --- MOBILE MENU LOGIC ---
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
@@ -842,130 +829,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
     setupDropZone('bg-drop-zone', 'bg-input');
     setupDropZone('wm-drop-zone', 'wm-input');
 
-    // Video Compression
-    const compressBtn = document.getElementById('compress-btn');
-    if (compressBtn) {
-        compressBtn.addEventListener('click', async () => {
-            const videoInput = document.getElementById('video-input');
-            const compressionLevel = document.getElementById('compression-level');
-            const status = document.getElementById('compress-status');
-            const originalHtml = compressBtn.innerHTML;
-            
-            if (!videoInput.files.length) {
-                alert('Veuillez sélectionner une vidéo.');
-                return;
-            }
-
-            compressBtn.disabled = true;
-            compressBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Initiation...';
-            status.classList.remove('hidden');
-            status.innerHTML = '<div class="loader"></div><p>Connexion au serveur...</p>';
-
-            const formData = new FormData();
-            formData.append('file', videoInput.files[0]);
-            formData.append('quality', compressionLevel.value);
-
-            try {
-                const response = await fetch('/api/compress-video', { method: 'POST', body: formData });
-                const data = await response.json();
-
-                if (!response.ok) throw new Error(data.error || 'Erreur serveur');
-
-                if (data.task_id) {
-                    pollToolStatus(data.task_id, status, compressBtn, originalHtml);
-                } else {
-                     throw new Error('Task ID missing from response');
-                }
-            } catch (error) {
-                compressBtn.disabled = false;
-                compressBtn.innerHTML = originalHtml;
-                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${error.message}</p>`;
-            }
-        });
-    }
-
-    // Background Removal
-    const removebgBtn = document.getElementById('removebg-btn');
-    if (removebgBtn) {
-        removebgBtn.addEventListener('click', async () => {
-            const bgInput = document.getElementById('bg-input');
-            const status = document.getElementById('removebg-status');
-            const originalHtml = removebgBtn.innerHTML;
-            
-            if (!bgInput.files.length) {
-                alert('Veuillez sélectionner une image.');
-                return;
-            }
-
-            removebgBtn.disabled = true;
-            removebgBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Traitement...';
-            status.classList.remove('hidden');
-            status.innerHTML = '<div class="loader"></div><p>Envoi de l\'image...</p>';
-
-            const formData = new FormData();
-            formData.append('file', bgInput.files[0]);
-
-            try {
-                const response = await fetch('/api/remove-background', { method: 'POST', body: formData });
-                const data = await response.json();
-
-                if (!response.ok) throw new Error(data.error || 'Erreur serveur');
-
-                if (data.task_id) {
-                    pollToolStatus(data.task_id, status, removebgBtn, originalHtml);
-                } else {
-                     throw new Error('Task ID missing');
-                }
-            } catch (error) {
-                removebgBtn.disabled = false;
-                removebgBtn.innerHTML = originalHtml;
-                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${error.message}</p>`;
-            }
-        });
-    }
-
-    // Watermark Removal
-    const removewmBtn = document.getElementById('removewm-btn');
-    if (removewmBtn) {
-        removewmBtn.addEventListener('click', async () => {
-            const wmInput = document.getElementById('wm-input');
-            const status = document.getElementById('removewm-status');
-            const originalHtml = removewmBtn.innerHTML;
-            
-            if (!wmInput.files.length) {
-                alert('Veuillez sélectionner une image.');
-                return;
-            }
-
-            removewmBtn.disabled = true;
-            removewmBtn.innerHTML = '<div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div> Envoi...';
-            status.classList.remove('hidden');
-            status.innerHTML = '<div class="loader"></div><p>Traitement...</p>';
-
-            const formData = new FormData();
-            formData.append('file', wmInput.files[0]);
-            formData.append('x', document.getElementById('wm-x').value);
-            formData.append('y', document.getElementById('wm-y').value);
-            formData.append('width', document.getElementById('wm-width').value);
-            formData.append('height', document.getElementById('wm-height').value);
-
-            try {
-                const response = await fetch('/api/remove-watermark', { method: 'POST', body: formData });
-                const data = await response.json();
-
-                if (!response.ok) throw new Error(data.error || 'Erreur serveur');
-                if (data.task_id) {
-                    pollToolStatus(data.task_id, status, removewmBtn, originalHtml);
-                } else {
-                    throw new Error('Task ID missing');
-                }
-            } catch (error) {
-                removewmBtn.disabled = false;
-                removewmBtn.innerHTML = originalHtml;
-                status.innerHTML = `<i class="fa-solid fa-times" style="color: #ff5555;"></i><p>Erreur: ${error.message}</p>`;
-            }
-        });
-    }
+    // Old tools removed.
 
     // --- SNOWFLAKES ANIMATION (Christmas Theme) ---
     const createSnowflakes = () => {
@@ -1654,4 +1518,207 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
             }
         });
     }
-});
+    // --- UTILITIES EXPRESS LOGIC ---
+
+    // Tool Switcher (QR Code vs Password)
+    const utilModeBtns = document.querySelectorAll('.tool-mode-btn');
+    const qrTool = document.getElementById('qrcode-tool');
+    const passTool = document.getElementById('password-tool');
+
+    utilModeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Remove active class from all
+            utilModeBtns.forEach(b => b.classList.remove('active'));
+            // Add to clicked
+            btn.classList.add('active');
+            
+            // Toggle Content
+            const toolType = btn.dataset.tool;
+            if (toolType === 'qrcode') {
+                qrTool.classList.remove('hidden');
+                passTool.classList.add('hidden');
+            } else if (toolType === 'password') {
+                qrTool.classList.add('hidden');
+                passTool.classList.remove('hidden');
+            }
+        });
+    });
+
+    // --- QR CODE GENERATOR ---
+    const qrData = document.getElementById('qr-data');
+    const qrType = document.getElementById('qr-type');
+    const qrColor = document.getElementById('qr-color');
+    const qrStyle = document.getElementById('qr-style');
+    const qrCanvasContainer = document.getElementById('qrcode-canvas');
+    const generateQrBtn = document.getElementById('generate-qr-btn');
+    const downloadQrPdfBtn = document.getElementById('download-qr-pdf');
+    let qrCodeObj = null;
+
+    if (qrType) {
+        qrType.addEventListener('change', () => {
+            const val = qrType.value;
+            if (val === 'url') qrData.placeholder = 'https://votre-site.com';
+            else if (val === 'text') qrData.placeholder = 'Entrez votre texte ici...';
+            else if (val === 'wifi') qrData.placeholder = 'WIFI:S:NomDuWifi;T:WPA;P:MotDePasse;;';
+            else if (val === 'email') qrData.placeholder = 'mailto:contact@email.com';
+        });
+    }
+
+    const generateQRCode = () => {
+        if (!qrData || !qrData.value) return;
+
+        qrCanvasContainer.innerHTML = '';
+        const color = qrColor.value;
+        const style = qrStyle.value; 
+        
+        // Basic Init
+        qrCodeObj = new QRCode(qrCanvasContainer, {
+            text: qrData.value,
+            width: 200,
+            height: 200,
+            colorDark : color,
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+    };
+
+    if (generateQrBtn) {
+        generateQrBtn.addEventListener('click', generateQRCode);
+    }
+
+    if (downloadQrPdfBtn) {
+        downloadQrPdfBtn.addEventListener('click', () => {
+            const canvas = qrCanvasContainer.querySelector('canvas');
+            if (!canvas) {
+                alert('Veuillez d\'abord générer un QR Code.');
+                return;
+            }
+            
+            const imgData = canvas.toDataURL('image/png');
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+
+            pdf.setFontSize(22);
+            pdf.text("Mon QR Code", 105, 40, { align: "center" });
+            
+            const imgWidth = 100;
+            const imgHeight = 100;
+            const x = (210 - imgWidth) / 2;
+            
+            pdf.addImage(imgData, 'PNG', x, 60, imgWidth, imgHeight);
+            
+            pdf.setFontSize(12);
+            pdf.text("Généré avec MediaMaster", 105, 280, { align: "center" });
+            
+            pdf.save("qrcode_mediamaster.pdf");
+        });
+    }
+
+
+    // --- PASSWORD GENERATOR ---
+    const passLength = document.getElementById('pass-length');
+    const passLengthVal = document.getElementById('pass-length-val');
+    const passUpper = document.getElementById('pass-uppercase');
+    const passNumbers = document.getElementById('pass-numbers');
+    const passSymbols = document.getElementById('pass-symbols');
+    const passKeywords = document.getElementById('pass-keywords'); 
+    const generatePassBtn = document.getElementById('generate-pass-btn');
+    const passResult = document.getElementById('password-result');
+    const copyPassBtn = document.getElementById('copy-password');
+    const strengthBar = document.querySelector('.strength-bar');
+    const strengthText = document.querySelector('.strength-text');
+
+    if (passLength) {
+        passLength.addEventListener('input', () => {
+            passLengthVal.textContent = passLength.value;
+        });
+    }
+
+    const calculateStrength = (password) => {
+        let strength = 0;
+        if (password.length > 8) strength += 20;
+        if (password.length > 12) strength += 20;
+        if (/[A-Z]/.test(password)) strength += 20;
+        if (/[0-9]/.test(password)) strength += 20;
+        if (/[^A-Za-z0-9]/.test(password)) strength += 20;
+        return Math.min(100, strength);
+    };
+
+    const updateStrengthMeter = (password) => {
+        const strength = calculateStrength(password);
+        if (strengthBar) {
+            strengthBar.style.width = `${strength}%`;
+            if (strength < 40) {
+                strengthBar.style.backgroundColor = '#ff4444';
+                if(strengthText) strengthText.textContent = 'Force : Faible 😟';
+            } else if (strength < 70) {
+                strengthBar.style.backgroundColor = '#ffbb33';
+                if(strengthText) strengthText.textContent = 'Force : Moyenne 😐';
+            } else {
+                strengthBar.style.backgroundColor = '#00C851';
+                if(strengthText) strengthText.textContent = 'Force : Excellente 😎';
+            }
+        }
+    };
+
+    const generatePassword = () => {
+        const len = parseInt(passLength.value);
+        const hasUpper = passUpper.checked;
+        const hasNumbers = passNumbers.checked;
+        const hasSymbols = passSymbols.checked;
+        const keywords = passKeywords.value.trim();
+
+        let password = "";
+
+        if (keywords) {
+            // Mnemonic Mode
+            const map = { 'a': '@', 'e': '3', 'i': '1', 'o': '0', 's': '$', 't': '7' };
+            password = keywords.split(/[\s,]+/).map(word => {
+                let transformed = word.split('').map(c => map[c.toLowerCase()] || c).join('');
+                if (hasUpper) transformed = transformed.charAt(0).toUpperCase() + transformed.slice(1);
+                return transformed;
+            }).join(hasSymbols ? '!' : '-');
+            
+            if (hasNumbers && !/\d/.test(password)) {
+                password += Math.floor(Math.random() * 100);
+            }
+            
+        } else {
+            // Random Mode
+            const lower = "abcdefghijklmnopqrstuvwxyz";
+            const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const numbers = "0123456789";
+            const symbols = "!@#$%^&*()_+~`|}{[]:;?><,./-=";
+            
+            let chars = lower;
+            if (hasUpper) chars += upper;
+            if (hasNumbers) chars += numbers;
+            if (hasSymbols) chars += symbols;
+
+            for (let i = 0; i < len; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+        }
+        
+        passResult.value = password;
+        updateStrengthMeter(password);
+    };
+
+    if (generatePassBtn) {
+        generatePassBtn.addEventListener('click', generatePassword);
+    }
+
+    if (copyPassBtn) {
+        copyPassBtn.addEventListener('click', () => {
+            if (passResult.value) {
+                navigator.clipboard.writeText(passResult.value).then(() => {
+                    const originalIcon = copyPassBtn.innerHTML;
+                    copyPassBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    setTimeout(() => copyPassBtn.innerHTML = originalIcon, 2000);
+                });
+            }
+        });
+    }
+
+}); // End DOMContentLoaded
+

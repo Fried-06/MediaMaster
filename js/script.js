@@ -2283,5 +2283,236 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
 
     }
 
+    // === OUTIL DESSIN SUR PDF (ANNOTATION) ===
+    const drawContainer = document.getElementById('tpl-add-drawing');
+    if (drawContainer) {
+        // --- Éléments UI ---
+        const dropZone = drawContainer.querySelector('#draw-pdf-drop');
+        const pdfInput = drawContainer.querySelector('.pdf-input');
+        const workspace = drawContainer.querySelector('#drawing-workspace');
+        
+        // Toolbar
+        const toolPen = document.getElementById('draw-tool-pen');
+        const toolMarker = document.getElementById('draw-tool-marker');
+        const toolEraser = document.getElementById('draw-tool-eraser');
+        const colorInput = document.getElementById('draw-color');
+        const widthInput = document.getElementById('draw-width');
+        const btnUndo = document.getElementById('draw-undo');
+        const btnClear = document.getElementById('draw-clear');
+        
+        // Canvas & Navigation
+        const pdfCanvas = document.getElementById('draw-pdf-render');
+        const drawCanvas = document.getElementById('draw-layer');
+        const btnPrev = document.getElementById('draw-prev-page');
+        const btnNext = document.getElementById('draw-next-page');
+        const pageSpan = document.getElementById('draw-page-num');
+        const totalSpan = document.getElementById('draw-total-pages');
+        const btnSave = document.getElementById('save-drawn-pdf');
+        
+        // --- État global Dessin ---
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pdfScale = 1.0; 
+        let isDrawing = false;
+        let currentTool = 'pen'; // 'pen', 'marker', 'eraser'
+        let drawingData = {}; // Stocke les dessins: { 1: ImageBitmap, ... }
+        let currentDrawFile = null;
+
+        // --- 1. Chargement du PDF ---
+        const loadDrawPDF = async (file) => {
+            currentDrawFile = file;
+            const arrayBuffer = await file.arrayBuffer();
+            const { getDocument } = window.pdfjsLib;
+            
+            try {
+                pdfDoc = await getDocument(arrayBuffer).promise;
+                totalSpan.textContent = pdfDoc.numPages;
+                pageNum = 1;
+                
+                dropZone.classList.add('hidden');
+                workspace.classList.remove('hidden');
+                
+                renderDrawPage(pageNum);
+            } catch (err) {
+                console.error("Erreur chargement PDF:", err);
+                alert("Impossible de lire le PDF.");
+            }
+        };
+
+        // --- 2. Rendu Page ---
+        const renderDrawPage = async (num) => {
+            saveCurrentDrawing(); 
+            
+            pageSpan.textContent = num;
+            const page = await pdfDoc.getPage(num);
+            
+            const containerWidth = document.getElementById('draw-render-container').clientWidth - 40;
+            const viewport = page.getViewport({ scale: 1 });
+            pdfScale = containerWidth / viewport.width;
+            if (pdfScale > 1.5) pdfScale = 1.5;
+            
+            const scaledViewport = page.getViewport({ scale: pdfScale });
+
+            // Resize Canvas
+            pdfCanvas.width = scaledViewport.width;
+            pdfCanvas.height = scaledViewport.height;
+            drawCanvas.width = scaledViewport.width;
+            drawCanvas.height = scaledViewport.height;
+
+            // Render PDF
+            await page.render({
+                canvasContext: pdfCanvas.getContext('2d'),
+                viewport: scaledViewport
+            }).promise;
+
+            // Restore Drawing
+            const ctx = drawCanvas.getContext('2d');
+            ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            if (drawingData[num]) {
+                ctx.drawImage(drawingData[num], 0, 0);
+            }
+        };
+
+        // --- 3. Dessin ---
+        const ctx = drawCanvas.getContext('2d');
+        
+        const getDrawPos = (e) => {
+            const rect = drawCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        };
+
+        const startDrawing = (e) => {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getDrawPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            if (currentTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = widthInput.value * 5;
+                ctx.globalAlpha = 1.0;
+            } else if (currentTool === 'marker') {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = colorInput.value;
+                ctx.lineWidth = widthInput.value * 3; // Marqueur plus large
+                ctx.globalAlpha = 0.5; // Semi-transparent
+            } else { // Pen
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = colorInput.value;
+                ctx.lineWidth = widthInput.value;
+                ctx.globalAlpha = 1.0;
+            }
+        };
+
+        const drawing = (e) => {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getDrawPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        };
+
+        const stopDrawing = () => {
+             isDrawing = false;
+        };
+
+        // Events
+        drawCanvas.addEventListener('mousedown', startDrawing);
+        drawCanvas.addEventListener('mousemove', drawing);
+        drawCanvas.addEventListener('mouseup', stopDrawing);
+        drawCanvas.addEventListener('mouseout', stopDrawing);
+        drawCanvas.addEventListener('touchstart', startDrawing);
+        drawCanvas.addEventListener('touchmove', drawing);
+        drawCanvas.addEventListener('touchend', stopDrawing);
+
+        // --- 4. Outils ---
+        const setDrawTool = (btn, mode) => {
+            [toolPen, toolMarker, toolEraser].forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentTool = mode;
+        };
+
+        toolPen.addEventListener('click', () => setDrawTool(toolPen, 'pen'));
+        toolMarker.addEventListener('click', () => setDrawTool(toolMarker, 'marker'));
+        toolEraser.addEventListener('click', () => setDrawTool(toolEraser, 'eraser'));
+        
+        btnClear.addEventListener('click', () => {
+             ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        });
+
+        // --- 5. Navigation ---
+        const saveCurrentDrawing = () => {
+            if (!pdfDoc) return;
+            createImageBitmap(drawCanvas).then(bitmap => {
+                drawingData[pageNum] = bitmap;
+            });
+        };
+
+        btnPrev.addEventListener('click', () => { if(pageNum > 1) { pageNum--; renderDrawPage(pageNum); } });
+        btnNext.addEventListener('click', () => { if(pageNum < pdfDoc.numPages) { pageNum++; renderDrawPage(pageNum); } });
+
+        // Load
+        dropZone.addEventListener('click', () => pdfInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; });
+        dropZone.addEventListener('dragleave', (e) => { dropZone.style.borderColor = 'var(--glass-border)'; });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files[0]) loadDrawPDF(e.dataTransfer.files[0]);
+        });
+        pdfInput.addEventListener('change', (e) => { if(e.target.files[0]) loadDrawPDF(e.target.files[0]); });
+
+        // --- 6. Sauvegarde ---
+        btnSave.addEventListener('click', async () => {
+            saveCurrentDrawing();
+            const status = document.getElementById('draw-status');
+            status.classList.remove('hidden');
+            status.innerHTML = '<div class="loader"></div><p>Sauvegarde des annotations...</p>';
+            
+            try {
+                const arrayBuffer = await currentDrawFile.arrayBuffer();
+                const { PDFDocument } = PDFLib; 
+                const pdf = await PDFDocument.load(arrayBuffer);
+                
+                for (const [pNum, bitmap] of Object.entries(drawingData)) {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = bitmap.width;
+                    tempCanvas.height = bitmap.height;
+                    const tCtx = tempCanvas.getContext('2d');
+                    tCtx.drawImage(bitmap, 0, 0);
+                    const pngData = tempCanvas.toDataURL('image/png');
+                    
+                    const image = await pdf.embedPng(pngData);
+                    const page = pdf.getPage(parseInt(pNum) - 1);
+                    const { width, height } = page.getSize();
+                    
+                    page.drawImage(image, { x: 0, y: 0, width: width, height: height });
+                }
+                
+                const pdfBytes = await pdf.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `annotated_${currentDrawFile.name}`;
+                link.click();
+                
+                status.innerHTML = '<i class="fa-solid fa-check" style="color: #00C851;"></i><p>PDF annoté prêt !</p>';
+                setTimeout(() => status.classList.add('hidden'), 3000);
+
+            } catch (err) {
+                console.error("Erreur:", err);
+                alert("Erreur sauvegarde.");
+            }
+        });
+    }
+
 }); // End DOMContentLoaded
 

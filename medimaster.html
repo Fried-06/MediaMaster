@@ -968,33 +968,62 @@
                 <div class="status-area hidden"></div>
             </div>
 
-            <!-- Draw on PDF -->
-            <div id="tpl-draw-pdf">
-                <div class="drop-zone pdf-drop">
-                    <i class="fa-solid fa-file-contract"></i>
-                    <p>1. Glissez votre PDF ici</p>
+            <!-- Add Drawing (Interface Interactive) -->
+            <div id="tpl-add-drawing">
+                <!-- Zone de dépôt initiale -->
+                <div class="drop-zone pdf-drop" id="draw-pdf-drop">
+                    <i class="fa-solid fa-palette"></i>
+                    <p>Glissez votre PDF à annoter ici</p>
                     <input type="file" accept=".pdf" hidden class="pdf-input">
                 </div>
-                <div class="drop-zone sig-drop" style="margin-top: 15px; border-color: var(--secondary);">
-                    <i class="fa-solid fa-pen-nib"></i>
-                    <p>2. Glissez votre dessin/image à ajouter</p>
-                    <input type="file" accept="image/*" hidden class="sig-input">
+
+                <!-- Espace de travail de dessin (Masqué initialement) -->
+                <div id="drawing-workspace" class="hidden" style="margin-top: 20px;">
+                    <!-- Barre d'outils de dessin -->
+                    <div class="toolbar glass-panel" style="padding: 10px; margin-bottom: 15px; display: flex; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                        <div class="tool-group">
+                            <button class="icon-btn active" id="draw-tool-pen" title="Crayon"><i class="fa-solid fa-pencil"></i></button>
+                            <button class="icon-btn" id="draw-tool-marker" title="Marqueur"><i class="fa-solid fa-highlighter"></i></button>
+                            <button class="icon-btn" id="draw-tool-eraser" title="Gomme"><i class="fa-solid fa-eraser"></i></button>
+                        </div>
+                        
+                        <div class="divider" style="width: 1px; height: 30px; background: rgba(255,255,255,0.2);"></div>
+                        
+                        <div class="tool-group">
+                            <input type="color" id="draw-color" value="#ff0000" title="Couleur">
+                            <input type="range" id="draw-width" min="1" max="20" value="2" title="Épaisseur" style="width: 80px;">
+                        </div>
+
+                        <div class="divider" style="width: 1px; height: 30px; background: rgba(255,255,255,0.2);"></div>
+
+                        <div class="tool-group">
+                            <button class="icon-btn" id="draw-undo" title="Annuler"><i class="fa-solid fa-rotate-left"></i></button>
+                            <button class="icon-btn" id="draw-clear" title="Tout effacer"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Conteneur PDF + Canvas de dessin -->
+                    <div id="draw-render-container" style="position: relative; border: 1px solid var(--glass-border); background: #525659; overflow: auto; max-height: 70vh; display: flex; justify-content: center; padding: 20px;">
+                        <div id="draw-page-wrapper" style="position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+                            <canvas id="draw-pdf-render"></canvas>
+                            <canvas id="draw-layer" style="position: absolute; top: 0; left: 0; cursor: crosshair;"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Pages -->
+                    <div class="pdf-controls glass-panel" style="margin-top: 15px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <button class="action-btn small" id="draw-prev-page"><i class="fa-solid fa-chevron-left"></i> Précédent</button>
+                        <span style="color: white; font-weight: 500;">Page <span id="draw-page-num">1</span> / <span id="draw-total-pages">1</span></span>
+                        <button class="action-btn small" id="draw-next-page">Suivant <i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+
+                    <!-- Bouton Sauvegarder -->
+                    <button id="save-drawn-pdf" class="action-btn process-btn" style="margin-top: 20px; width: 100%;">
+                        <span>Sauvegarder les Annotations</span> <i class="fa-solid fa-file-export"></i>
+                    </button>
                 </div>
-                <div class="options-grid">
-                    <div class="input-group">
-                        <label>Page #</label>
-                        <input type="number" value="0" class="page-num">
-                    </div>
-                    <div class="input-group">
-                        <label>Position X</label>
-                        <input type="number" value="100" class="pos-x">
-                    </div>
-                    <div class="input-group">
-                        <label>Position Y</label>
-                <button class="action-btn process-btn">
-                    <span>Ajouter Dessin</span> <i class="fa-solid fa-pen-nib"></i>
-                </button>
-                <div class="status-area hidden"></div>
+                
+                <div class="status-area hidden" id="draw-status"></div>
             </div>
         </div>
     </main>

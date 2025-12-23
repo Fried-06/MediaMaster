@@ -2905,99 +2905,274 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         });
     }
 
-    // === OUTIL AJOUTER TEXTE (MACHINE À ÉCRIRE) ===
-    const textContainer = document.getElementById('tpl-add-text');
-    if (textContainer) {
-        // --- Éléments UI ---
-        const dropZone = textContainer.querySelector('#text-pdf-drop');
-        const pdfInput = textContainer.querySelector('.pdf-input');
-        const workspace = textContainer.querySelector('#text-workspace');
+
+    // --- 7. EDIT PDF (TEXTE) ---
+    function setupVisualEditor(config) {
+        const { PDFLib, toolContentArea, btnSave } = config;
+        const pdfInput = toolContentArea.querySelector('#visual-pdf-input');
+        const dropZone = toolContentArea.querySelector('#visual-pdf-drop');
+        const visualEditorUi = toolContentArea.querySelector('#visual-editor-ui');
+        const canvasContainer = toolContentArea.querySelector('#canvas-container');
+        const canvas = toolContentArea.querySelector('#the-canvas');
+        const ctx = canvas.getContext('2d');
         
-        // Toolbar
-        const textContentInput = document.getElementById('text-input-content');
-        const fontSelect = document.getElementById('text-font');
-        const fontSizeInput = document.getElementById('text-size');
-        const colorInput = document.getElementById('text-color');
-        const btnUndo = document.getElementById('text-undo');
-        const btnClear = document.getElementById('text-clear');
+        // Toolbar Inputs
+        const addTextBtn = toolContentArea.querySelector('#add-text-tool');
+        const colorInput = toolContentArea.querySelector('#editor-color');
+        const sizeInput = toolContentArea.querySelector('#editor-size');
         
-        // Render & Layer
-        const pdfCanvas = document.getElementById('text-pdf-render');
-        const textLayer = document.getElementById('text-layer');
-        const btnPrev = document.getElementById('text-prev-page');
-        const btnNext = document.getElementById('text-next-page');
-        const pageSpan = document.getElementById('text-page-num');
-        const totalSpan = document.getElementById('text-total-pages');
-        const btnSave = document.getElementById('save-text-pdf');
-        
-        // --- État global Texte ---
-        let pdfDoc = null;
+            // Pagination Controls
+        const btnPrev = toolContentArea.querySelector('#edit-prev-page');
+        const btnNext = toolContentArea.querySelector('#edit-next-page');
+        const pageNumSpan = toolContentArea.querySelector('#edit-page-num');
+        const totalPagesSpan = toolContentArea.querySelector('#edit-total-pages');
+
+        let pdfDoc = null; // PDF.js document
+        let currentPdfFile = null; // File object
         let pageNum = 1;
-        let pdfScale = 1.0; 
-        let textAnnotations = {}; // { 1: [{x, y, text, font, size, color}], 2: ... }
-        let currentTextFile = null;
+        let pdfScale = 1.5;
+        let textElements = {}; // { pageNum: [ {text, x, y, color, size} ] }
+        let isAddingText = false;
 
-        // --- 1. Chargement PDF ---
-        const loadTextPDF = async (file) => {
-            currentTextFile = file;
-            const arrayBuffer = await file.arrayBuffer();
-            const { getDocument } = window.pdfjsLib;
+        const renderPage = async (num) => {
+            if (!pdfDoc) return;
             
-            try {
-                pdfDoc = await getDocument(arrayBuffer).promise;
-                totalSpan.textContent = pdfDoc.numPages;
-                pageNum = 1;
-                
-                dropZone.classList.add('hidden');
-                workspace.classList.remove('hidden');
-                
-                renderTextPage(pageNum);
-            } catch (err) {
-                console.error("Erreur PDF:", err);
-                alert("Impossible de lire le PDF.");
-            }
-        };
-
-        // --- 2. Rendu Page et Annotations ---
-        const renderTextPage = async (num) => {
-            pageSpan.textContent = num;
             const page = await pdfDoc.getPage(num);
+            const viewport = page.getViewport({ scale: pdfScale });
             
-            const containerWidth = document.getElementById('text-render-container').clientWidth - 40;
-            const viewport = page.getViewport({ scale: 1 });
-            pdfScale = containerWidth / viewport.width;
-            if (pdfScale > 1.5) pdfScale = 1.5;
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
             
-            const scaledViewport = page.getViewport({ scale: pdfScale });
-
-            // Canvas
-            pdfCanvas.width = scaledViewport.width;
-            pdfCanvas.height = scaledViewport.height;
-            textLayer.style.width = `${scaledViewport.width}px`;
-            textLayer.style.height = `${scaledViewport.height}px`;
-
-            // Render
-            await page.render({
-                canvasContext: pdfCanvas.getContext('2d'),
-                viewport: scaledViewport
-            }).promise;
-
-            // Afficher les annotations existantes pour cette page
-            textLayer.innerHTML = ''; // Clear old ones
-            if (textAnnotations[num]) {
-                textAnnotations[num].forEach((anno, index) => {
-                    createFloatingText(anno.x, anno.y, anno.text, anno.font, anno.size, anno.color, index);
-                });
-            }
+            const renderContext = {
+                canvasContext: ctx,
+                viewport: viewport
+            };
+            
+            await page.render(renderContext).promise;
+            
+            // Update UI controls
+            if (pageNumSpan) pageNumSpan.textContent = num;
+            if (totalPagesSpan) totalPagesSpan.textContent = pdfDoc.numPages;
+            
+            if (btnPrev) btnPrev.disabled = num <= 1;
+            if (btnNext) btnNext.disabled = num >= pdfDoc.numPages;
+            
+            // Re-render text elements for this page
+            renderTextOverlay(num);
         };
 
-        // --- 3. Création de texte flottant ---
-        const createFloatingText = (x, y, textVal, fontVal, sizeVal, colorVal, indexIsNew = true) => {
-            const span = document.createElement('div');
-            span.textContent = textVal;
-            span.style.position = 'absolute';
-            span.style.left = `${x}px`;
-            span.style.top = `${y}px`;
+        const renderTextOverlay = (page) => {
+                // Remove existing text overlays from DOM to avoid duplication
+                const existingOverlays = canvasContainer.querySelectorAll('.text-overlay');
+                existingOverlays.forEach(el => el.remove());
+
+                if (textElements[page]) {
+                    textElements[page].forEach((item, index) => {
+                        createDraggableText(item.text, item.x, item.y, item.color, item.size, index);
+                    });
+                }
+        };
+
+        const createDraggableText = (text, x, y, color, size, index) => {
+                const span = document.createElement('div');
+                span.className = 'text-overlay';
+                span.contentEditable = true;
+                span.textContent = text;
+                span.style.position = 'absolute';
+                span.style.left = x + 'px';
+                span.style.top = y + 'px';
+                span.style.color = color;
+                span.style.fontSize = size + 'px';
+                span.style.fontFamily = 'Arial'; // Could be dynamic
+                span.style.cursor = 'move';
+                span.style.border = '1px dashed transparent';
+                span.style.padding = '5px';
+                span.style.minWidth = '50px';
+                span.style.zIndex = '10';
+                
+                // Hover effect
+                span.onmouseover = () => span.style.border = '1px dashed var(--primary)';
+                span.onmouseout = () => { if(document.activeElement !== span) span.style.border = '1px dashed transparent'; };
+                
+                // Update text content in state
+                span.onblur = () => {
+                    if (textElements[pageNum] && textElements[pageNum][index]) {
+                        textElements[pageNum][index].text = span.innerText;
+                    }
+                    span.style.border = '1px dashed transparent';
+                };
+
+                // Drag logic could be added here, but for simplicity we rely on initial placement
+                // For now, let's allow moving by dragging
+                let isDragging = false;
+                let startX, startY;
+                
+                span.onmousedown = (e) => {
+                    isDragging = true;
+                    startX = e.clientX - span.offsetLeft;
+                    startY = e.clientY - span.offsetTop;
+                    span.style.cursor = 'grabbing';
+                };
+                
+                window.addEventListener('mouseup', () => { isDragging = false; span.style.cursor = 'move'; });
+                window.addEventListener('mousemove', (e) => {
+                    if (isDragging) {
+                        const newX = e.clientX - startX;
+                        const newY = e.clientY - startY;
+                        span.style.left = newX + 'px';
+                        span.style.top = newY + 'px';
+                        if (textElements[pageNum] && textElements[pageNum][index]) {
+                            textElements[pageNum][index].x = newX;
+                            textElements[pageNum][index].y = newY;
+                        }
+                    }
+                });
+                
+                canvasContainer.appendChild(span);
+        };
+
+        const loadVisualPDF = async (file) => {
+            currentPdfFile = file;
+            const arrayBuffer = await file.arrayBuffer();
+            pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
+            
+            dropZone.classList.add('hidden');
+            visualEditorUi.classList.remove('hidden');
+            
+            pageNum = 1;
+            renderPage(pageNum);
+        };
+        
+        // Event Listeners
+        if (dropZone) {
+            dropZone.onclick = () => pdfInput.click();
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; });
+            dropZone.addEventListener('dragleave', (e) => dropZone.style.borderColor = 'var(--glass-border)');
+            dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files[0]) loadVisualPDF(e.dataTransfer.files[0]);
+            });
+        }
+        if (pdfInput) {
+            pdfInput.onchange = (e) => { if (e.target.files[0]) loadVisualPDF(e.target.files[0]); };
+        }
+
+        // Add Text Tool
+        if (addTextBtn) {
+            addTextBtn.onclick = () => {
+                    isAddingText = !isAddingText;
+                    addTextBtn.classList.toggle('active', isAddingText);
+                    canvasContainer.style.cursor = isAddingText ? 'text' : 'default';
+            };
+        }
+        
+        // Canvas Click to Add Text
+        canvasContainer.onclick = (e) => {
+            if (isAddingText && e.target === canvas) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (!textElements[pageNum]) textElements[pageNum] = [];
+                textElements[pageNum].push({
+                    text: 'Texte ici',
+                    x: x,
+                    y: y,
+                    color: colorInput.value,
+                    size: parseInt(sizeInput.value)
+                });
+                
+                renderTextOverlay(pageNum);
+                isAddingText = false;
+                addTextBtn.classList.remove('active');
+                canvasContainer.style.cursor = 'default';
+            }
+        };
+        
+        // Pagination
+        if (btnPrev) {
+            btnPrev.onclick = () => {
+                if (pageNum > 1) {
+                    pageNum--;
+                    renderPage(pageNum);
+                }
+            };
+        }
+        
+        if (btnNext) {
+            btnNext.onclick = () => {
+                if (pdfDoc && pageNum < pdfDoc.numPages) {
+                    pageNum++;
+                    renderPage(pageNum);
+                }
+            };
+        }
+        
+        // Save
+        if (btnSave) {
+            btnSave.onclick = async () => {
+                    const status = toolContentArea.querySelector('.status-area');
+                    status.classList.remove('hidden');
+                    status.innerHTML = '<div class="loader"></div><p>Génération du PDF...</p>';
+                    
+                    try {
+                        const arrayBuffer = await currentPdfFile.arrayBuffer();
+                        const { PDFDocument, rgb, StandardFonts } = PDFLib;
+                        const pdf = await PDFDocument.load(arrayBuffer);
+                        
+                        const font = await pdf.embedFont(StandardFonts.Helvetica);
+                        
+                        for (const [pNum, texts] of Object.entries(textElements)) {
+                            const page = pdf.getPage(parseInt(pNum) - 1);
+                            const { height } = page.getSize();
+                            const originalViewport = await pdfDoc.getPage(parseInt(pNum));
+                            const vp = originalViewport.getViewport({scale: pdfScale});
+                            
+                            // Scale factor between visual canvas (pdf.js) and actual PDF
+                            const scaleX = page.getWidth() / vp.width;
+                            const scaleY = page.getHeight() / vp.height;
+
+                            texts.forEach(item => {
+                                const pdfY = height - (item.y * scaleY) - (item.size * scaleY); // PDF coordinates are bottom-left
+                                page.drawText(item.text, {
+                                    x: item.x * scaleX,
+                                    y: height - (item.y * scaleY) - (item.size * 0.8), // Adjust for baseline
+                                    size: item.size,
+                                    font: font,
+                                    color: hexToRgb(item.color) // Need helper hexToRgb
+                                });
+                            });
+                        }
+                        
+                        const pdfBytes = await pdf.save();
+                        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'medimaster_edit.pdf';
+                        a.click();
+                        
+                        status.innerHTML = '<p style="color: #4ade80;">PDF généré avec succès !</p>';
+                    } catch (e) {
+                        console.error(e);
+                        status.innerHTML = '<p style="color: #f87171;">Erreur lors de la génération.</p>';
+                    }
+            };
+        }
+        
+        // Helper
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            const { PDFLib } = config; // Assuming we can use PDFLib.rgb but passing r,g,b in 0-1 range
+            return result ? PDFLib.rgb(
+                parseInt(result[1], 16) / 255,
+                parseInt(result[2], 16) / 255,
+                parseInt(result[3], 16) / 255
+            ) : PDFLib.rgb(0, 0, 0);
+        }
+    }
+
+
             span.style.fontFamily = fontVal;
             span.style.fontSize = `${sizeVal * pdfScale}px`; // Scale visuel
             span.style.color = colorVal;

@@ -613,25 +613,12 @@ def compress_video_task(task_id, input_path, output_filename, quality):
 
 @app.route('/api/compress-video', methods=['POST'])
 def compress_video():
-    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
-    file = request.files['file']
-    quality = request.form.get('quality', 'medium')
-    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
-    
-    task_id = str(uuid.uuid4())
-    original_name = os.path.splitext(secure_filename(file.filename))[0]
-    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_comp_in_{secure_filename(file.filename)}")
-    file.save(input_path)
-    output_filename = f"{original_name}_compressed.mp4"
-    
-    # If file exists, append task_id to avoid conflict
-    if os.path.exists(os.path.join(DOWNLOAD_FOLDER, output_filename)):
-        output_filename = f"{original_name}_{task_id[:8]}_compressed.mp4"
+    # DISABLED - Fonctionnalité à venir
+    return jsonify({
+        'error': 'Fonctionnalité temporairement désactivée - Bientôt disponible !',
+        'disabled': True
+    }), 503
 
-    downloads[task_id] = {'status': 'pending', 'progress': 0}
-    threading.Thread(target=tool_worker_wrapper, args=(task_id, compress_video_task, input_path, output_filename, quality)).start()
-    
-    return jsonify({'success': True, 'task_id': task_id})
 
 # --- BACKGROUND REMOVAL ---
 def remove_bg_task(task_id, input_path, output_filename):
@@ -667,19 +654,12 @@ def remove_bg_task(task_id, input_path, output_filename):
 
 @app.route('/api/remove-background', methods=['POST'])
 def remove_background():
-    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
-    file = request.files['file']
-    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
-    
-    task_id = str(uuid.uuid4())
-    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_rbg_in.png")
-    file.save(input_path)
-    output_filename = f"{task_id}_nobg.png"
-    
-    downloads[task_id] = {'status': 'pending', 'progress': 0}
-    threading.Thread(target=tool_worker_wrapper, args=(task_id, remove_bg_task, input_path, output_filename)).start()
-    
-    return jsonify({'success': True, 'task_id': task_id})
+    # DISABLED - Fonctionnalité à venir
+    return jsonify({
+        'error': 'Fonctionnalité temporairement désactivée - Bientôt disponible !',
+        'disabled': True
+    }), 503
+
 
 # --- WATERMARK REMOVAL ---
 def remove_watermark_task(task_id, input_path, output_filename, x, y, width, height):
@@ -712,24 +692,12 @@ def remove_watermark_task(task_id, input_path, output_filename, x, y, width, hei
 
 @app.route('/api/remove-watermark', methods=['POST'])
 def remove_watermark():
-    if 'file' not in request.files: return jsonify({'error': 'No file provided'}), 400
-    file = request.files['file']
-    if file.filename == '': return jsonify({'error': 'No file selected'}), 400
+    # DISABLED - Fonctionnalité à venir
+    return jsonify({
+        'error': 'Fonctionnalité temporairement désactivée - Bientôt disponible !',
+        'disabled': True
+    }), 503
 
-    x = float(request.form.get('x', 0))
-    y = float(request.form.get('y', 0))
-    width = float(request.form.get('width', 100))
-    height = float(request.form.get('height', 50))
-    
-    task_id = str(uuid.uuid4())
-    input_path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_wm_in.png")
-    file.save(input_path)
-    output_filename = f"{task_id}_nowm.png"
-    
-    downloads[task_id] = {'status': 'pending', 'progress': 0}
-    threading.Thread(target=tool_worker_wrapper, args=(task_id, remove_watermark_task, input_path, output_filename, x, y, width, height)).start()
-    
-    return jsonify({'success': True, 'task_id': task_id})
 
 # --- PDF TOOLS ---
 

@@ -41,7 +41,7 @@
             <button class="nav-btn" data-tab="download"><i class="fa-solid fa-cloud-arrow-down"></i> Télécharger</button>
             <button class="nav-btn" data-tab="convert"><i class="fa-solid fa-wand-magic"></i> Convertir</button>
             <button class="nav-btn" data-tab="images"><i class="fa-solid fa-image"></i> Images</button>
-            <button class="nav-btn" data-tab="tools"><i class="fa-solid fa-toolbox"></i> Outils</button>
+            <button class="nav-btn disabled" data-tab="tools" disabled><i class="fa-solid fa-toolbox"></i> Outils <span class="nav-soon">(Bientôt)</span></button>
             <button class="nav-btn" data-tab="bureautique"><i class="fa-solid fa-file-pdf"></i> Bureautique</button>
             <button class="nav-btn" data-tab="suggestions-reviews"><i class="fa-solid fa-star"></i> Avis & Suggestions</button>
             
@@ -90,11 +90,11 @@
                         <p>Vidéo & Audio</p>
                         <div class="glow-border"></div>
                     </div>
-                    <div class="landing-card" onclick="switchTab('tools')">
+                    <div class="landing-card disabled" title="Fonctionnalité à venir">
                         <div class="card-icon"><i class="fa-solid fa-toolbox"></i></div>
                         <h3>Outils</h3>
                         <p>Compression, IA...</p>
-                        <div class="glow-border"></div>
+                        <span class="coming-soon-badge">Fonctionnalité à venir</span>
                     </div>
                     <div class="landing-card" onclick="switchTab('bureautique')">
                         <div class="card-icon"><i class="fa-solid fa-file-pdf"></i></div>

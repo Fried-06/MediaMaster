@@ -1861,5 +1861,157 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         });
     }
 
+    // === OUTIL FILIGRANE AVANCÉ ===
+    const wmContainer = document.getElementById('tpl-add-watermark');
+    if (wmContainer) {
+        // --- Éléments du DOM ---
+        const wmText = wmContainer.querySelector('.watermark-text');
+        const wmColor = wmContainer.querySelector('.watermark-color');
+        const wmFont = wmContainer.querySelector('.watermark-font');
+        const wmSize = wmContainer.querySelector('.watermark-size');
+        const wmOpacity = wmContainer.querySelector('.watermark-opacity');
+        const wmAngle = wmContainer.querySelector('.watermark-angle');
+        const wmCount = wmContainer.querySelector('.watermark-count');
+        
+        const previewEl = document.getElementById('watermark-preview');
+        const previewText = previewEl.querySelector('.preview-watermark');
+        const applyBtn = wmContainer.querySelector('.process-btn');
+        const pdfInput = wmContainer.querySelector('input[type="file"]');
+        const statusArea = wmContainer.querySelector('.status-area');
+
+        // --- Mise à jour de l'aperçu en temps réel ---
+        const updatePreview = () => {
+            const text = wmText.value || 'CONFIDENTIEL';
+            const color = wmColor.value;
+            const font = wmFont.value;
+            const size = wmSize.value;
+            const opacity = wmOpacity.value / 100;
+            const angle = wmAngle.value;
+            
+            // Mise à jour des valeurs affichées
+            wmContainer.querySelector('.watermark-size-val').textContent = size;
+            wmContainer.querySelector('.watermark-opacity-val').textContent = wmOpacity.value;
+            wmContainer.querySelector('.watermark-angle-val').textContent = angle;
+            wmContainer.querySelector('.watermark-count-val').textContent = wmCount.value;
+
+            // Application du style CSS sur l'élément d'aperçu
+            previewText.textContent = text;
+            previewText.style.color = color;
+            previewText.style.fontFamily = font;
+            previewText.style.fontSize = `${size}px`;
+            previewText.style.opacity = opacity;
+            previewText.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+        };
+
+        // Écouteurs d'événements pour tous les inputs
+        [wmText, wmColor, wmFont, wmSize, wmOpacity, wmAngle, wmCount].forEach(input => {
+            input.addEventListener('input', updatePreview);
+        });
+
+        // --- Application du filigrane sur le PDF (pdf-lib) ---
+        applyBtn.addEventListener('click', async () => {
+            const file = pdfInput.files[0];
+            if (!file) {
+                alert('Veuillez sélectionner un fichier PDF.');
+                return;
+            }
+
+            statusArea.classList.remove('hidden');
+            statusArea.innerHTML = '<div class="loader"></div><p>Traitement du PDF en cours...</p>';
+
+            try {
+                // Lecture du fichier
+                const arrayBuffer = await file.arrayBuffer();
+                
+                // Chargement dans pdf-lib
+                const { PDFDocument, rgb, degrees, StandardFonts } = PDFLib;
+                const pdfDoc = await PDFDocument.load(arrayBuffer);
+                const pages = pdfDoc.getPages();
+
+                // Préparation des paramètres
+                const text = wmText.value || 'CONFIDENTIEL';
+                const size = parseInt(wmSize.value);
+                const opacity = parseInt(wmOpacity.value) / 100;
+                const angle = parseInt(wmAngle.value);
+                const count = parseInt(wmCount.value); // Nombre de répétitions
+                
+                // Conversion couleur Hex -> RGB (pdf-lib utilise 0-1)
+                const hexToRgb = (hex) => {
+                    const r = parseInt(hex.slice(1, 3), 16) / 255;
+                    const g = parseInt(hex.slice(3, 5), 16) / 255;
+                    const b = parseInt(hex.slice(5, 7), 16) / 255;
+                    return rgb(r, g, b);
+                };
+                const colorRgb = hexToRgb(wmColor.value);
+
+                // Sélection de la police standard (pdf-lib supporte standard fonts facilement)
+                // Pour simplifier, on mappe les choix sur Helvetica/Times/Courier
+                let fontEmbed;
+                const fontVal = wmFont.value;
+                if (fontVal.includes('Times')) fontEmbed = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+                else if (fontVal.includes('Courier')) fontEmbed = await pdfDoc.embedFont(StandardFonts.Courier);
+                else fontEmbed = await pdfDoc.embedFont(StandardFonts.HelveticaBold); // Impact/Arial mapping
+
+                // Boucle sur chaque page
+                for (const page of pages) {
+                    const { width, height } = page.getSize();
+                    
+                    if (count === 1) {
+                        // Cas simple : 1 filigrane au centre
+                        page.drawText(text, {
+                            x: width / 2 - (size * text.length / 4), // centrage approximatif
+                            y: height / 2,
+                            size: size,
+                            font: fontEmbed,
+                            color: colorRgb,
+                            opacity: opacity,
+                            rotate: degrees(angle),
+                        });
+                    } else {
+                        // Cas multiple : Grille de filigranes
+                        // On crée une grille simple
+                        const rows = Math.ceil(Math.sqrt(count));
+                        const cols = Math.ceil(count / rows);
+                        const xStep = width / cols;
+                        const yStep = height / rows;
+
+                        for (let i = 0; i < cols; i++) {
+                            for (let j = 0; j < rows; j++) {
+                                // Ajout d'un offset pour éviter que ce soit trop régulier
+                                const x = (i * xStep) + (xStep / 2) - 50; 
+                                const y = (j * yStep) + (yStep / 2);
+                                
+                                page.drawText(text, {
+                                    x: x,
+                                    y: y,
+                                    size: size,
+                                    font: fontEmbed,
+                                    color: colorRgb,
+                                    opacity: opacity,
+                                    rotate: degrees(angle),
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // Sauvegarde et téléchargement
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `watermarked_${file.name}`;
+                link.click();
+
+                statusArea.innerHTML = '<i class="fa-solid fa-check" style="color: #00C851;"></i><p>Filigrane ajouté avec succès !</p>';
+                setTimeout(() => statusArea.classList.add('hidden'), 3000);
+
+            } catch (err) {
+                console.error("Erreur PDF:", err);
+                statusArea.innerHTML = `<i class="fa-solid fa-times" style="color: #ff4444;"></i><p>Erreur: ${err.message}</p>`;
+            }
+        });
+    }
+
 }); // End DOMContentLoaded
 

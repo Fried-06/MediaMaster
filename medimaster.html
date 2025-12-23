@@ -720,21 +720,86 @@
                 <div class="status-area hidden"></div>
             </div>
 
-            <!-- Add Watermark -->
+            <!-- Add Watermark (Version Avancée) -->
             <div id="tpl-add-watermark">
+                <!-- Zone de dépôt du PDF -->
                 <div class="drop-zone pdf-drop">
-                    <i class="fa-solid fa-droplet"></i>
+                    <i class="fa-solid fa-file-pdf"></i>
                     <p>Glissez votre PDF ici</p>
                     <input type="file" accept=".pdf" hidden>
                 </div>
-                <div class="options-grid">
+                
+                <!-- Options de Personnalisation du Filigrane -->\n                <div class="options-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
+                    <!-- Texte du filigrane -->
+                    <div class="input-group" style="grid-column: span 2;">
+                        <label><i class="fa-solid fa-pen"></i> Texte du filigrane</label>
+                        <input type="text" placeholder="CONFIDENTIEL, DRAFT, COPY..." class="watermark-text" value="CONFIDENTIEL">
+                    </div>
+                    
+                    <!-- Couleur -->
                     <div class="input-group">
-                        <label>Texte du filigrane</label>
-                        <input type="text" placeholder="Confidentiel, Draft..." class="watermark-text" value="CONFIDENTIEL">
+                        <label><i class="fa-solid fa-palette"></i> Couleur</label>
+                        <input type="color" class="watermark-color" value="#ff0000" 
+                               style="width: 100%; height: 40px; cursor: pointer; border-radius: 8px;">
+                    </div>
+                    
+                    <!-- Police -->
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-font"></i> Police</label>
+                        <select class="watermark-font" style="width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);">
+                            <option value="Arial">Arial</option>
+                            <option value="Helvetica">Helvetica</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                            <option value="Courier">Courier</option>
+                            <option value="Impact" selected>Impact (Bold)</option>
+                            <option value="Verdana">Verdana</option>
+                            <option value="Georgia">Georgia</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Taille -->
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-text-height"></i> Taille : <span class="watermark-size-val">50</span>px</label>
+                        <input type="range" class="watermark-size" min="10" max="100" value="50" 
+                               style="width: 100%;">
+                    </div>
+                    
+                    <!-- Opacité -->
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-droplet"></i> Opacité : <span class="watermark-opacity-val">30</span>%</label>
+                        <input type="range" class="watermark-opacity" min="10" max="100" value="30" 
+                               style="width: 100%;">
+                    </div>
+                    
+                    <!-- Angle de rotation -->
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-rotate"></i> Rotation : <span class="watermark-angle-val">-45</span>°</label>
+                        <input type="range" class="watermark-angle" min="-90" max="90" value="-45" 
+                               style="width: 100%;">
+                    </div>
+                    
+                    <!-- Nombre de filigranes par page -->
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-clone"></i> Répétitions : <span class="watermark-count-val">1</span></label>
+                        <input type="range" class="watermark-count" min="1" max="20" value="1" 
+                               style="width: 100%;">
+                        <small style="color: var(--text-muted); display: block; margin-top: 5px;">
+                            1 = Centre unique | 2-20 = Motif répété
+                        </small>
                     </div>
                 </div>
-                <button class="action-btn process-btn">
-                    <span>Ajouter Filigrane</span> <i class="fa-solid fa-stamp"></i>
+                
+                <!-- Aperçu du filigrane -->
+                <div style="margin-top: 20px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 10px; text-align: center;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Aperçu :</p>
+                    <div id="watermark-preview" style="position: relative; height: 100px; background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%); border-radius: 8px; overflow: hidden;">
+                        <span class="preview-watermark" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 50px; font-family: Impact; color: rgba(255, 0, 0, 0.3); font-weight: bold; white-space: nowrap;">CONFIDENTIEL</span>
+                    </div>
+                </div>
+                
+                <!-- Bouton d'application -->
+                <button class="action-btn process-btn" style="margin-top: 20px;">
+                    <span>Appliquer le Filigrane</span> <i class="fa-solid fa-droplet"></i>
                 </button>
                 <div class="status-area hidden"></div>
             </div>
@@ -980,6 +1045,7 @@
     <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="js/script.js"></script>
 </body>
 </html>

@@ -1,9 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- THEME MANAGEMENT ---
+    // --- GESTION DU THÈME ---
     const themeSelect = document.getElementById('theme-select');
     const savedTheme = localStorage.getItem('gemini3-theme') || 'cyber';
     
-    // Apply saved theme immediately
+    // Appliquer le thème sauvegardé immédiatement
     document.documentElement.setAttribute('data-theme', savedTheme);
     if(themeSelect) themeSelect.value = savedTheme;
 
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     }
 
-    // --- HISTORY LOGIC ---
+    // --- LOGIQUE DE L'HISTORIQUE ---
     const loadHistory = async () => {
         const historyBody = document.getElementById('history-body');
         if (!historyBody) return;
@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- TYPING EFFECT ---
+    // --- EFFET MACHINE À ÉCRIRE ---
     const typeWriter = (element, text, speed = 50) => {
         element.innerHTML = '';
         element.style.borderRight = '3px solid var(--primary)'; // Add cursor
@@ -114,11 +114,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const h1 = newTab.querySelector('.hero-text h1');
             const p = newTab.querySelector('.hero-text p');
             
-            // Reset for re-typing (optional, remove if you only want it once)
+            // Réinitialiser pour retaper (optionnel, supprimer si une seule fois suffit)
             if (h1) { h1.dataset.typed = ""; h1.innerText = h1.getAttribute('data-original-text') || h1.innerText; h1.setAttribute('data-original-text', h1.innerText); }
             if (p) { p.dataset.typed = ""; p.innerText = p.getAttribute('data-original-text') || p.innerText; p.setAttribute('data-original-text', p.innerText); }
 
-            // Start typing effect on tab switch
+            // Démarrer l'effet de frappe au changement d'onglet
             initTypingEffect();
         });
     });
@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const qualitySelect = document.getElementById('quality-select');
     const platformBadge = document.getElementById('platform-badge');
 
-    // Platform Detection
+    // Détection de la Plateforme
     const detectPlatform = (url) => {
         if (!url) return { name: 'Auto', icon: 'fa-globe' };
         
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     toggleClearBtn();
                     
                     // Trigger download automatically -> DISABLED as per user request
-                    console.log("Auto-detected URL, pasted but NOT downloading.");
+                    console.log("URL détectée, collée mais pas de téléchargement auto.");
                     // downloadBtn.click(); 
                 }
             }
@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // Request permission on load
+    // Demander la permission au chargement
     requestNotificationPermission();
 
 
@@ -824,14 +824,14 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         });
     };
 
-    // Setup all drop zones
+    // Configuration de toutes les zones de dépôt
     setupDropZone('video-drop-zone', 'video-input');
     setupDropZone('bg-drop-zone', 'bg-input');
     setupDropZone('wm-drop-zone', 'wm-input');
 
     // Old tools removed.
 
-    // --- SNOWFLAKES ANIMATION (Christmas Theme) ---
+    // --- ANIMATION FLOCONS (Thème Noël) ---
     const createSnowflakes = () => {
         const snowflakesContainer = document.getElementById('snowflakes');
         if (!snowflakesContainer) return;
@@ -851,7 +851,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         }
     };
 
-    // Initialize snowflakes if Christmas theme
+    // Initialiser les flocons si thème Noël
     const initTheme = () => {
         const savedTheme = localStorage.getItem('theme') || 'christmas';
         document.documentElement.setAttribute('data-theme', savedTheme);
@@ -868,11 +868,11 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         }
     };
 
-    // Create snowflakes on load
+    // Créer les flocons au chargement
     createSnowflakes();
     initTheme();
 
-    // Update theme change handler to toggle snowflakes
+    // Mettre à jour le gestionnaire de thème pour basculer les flocons
     if (themeSelect) {
         themeSelect.addEventListener('change', (e) => {
             const theme = e.target.value;
@@ -886,14 +886,14 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         });
     }
 
-    // --- BUREAUTIQUE SECTION ---
+    // --- SECTION BUREAUTIQUE ---
     const toolModal = document.getElementById('tool-modal');
     const toolContentArea = document.getElementById('tool-content-area');
     const closeToolBtn = document.getElementById('close-tool-btn');
     const toolTitle = document.getElementById('tool-title');
     const bureautiqueItems = document.querySelectorAll('.bureautique-item');
 
-    // Tool config
+    // Configuration des outils
     const toolConfig = {
         'pdf-to-images': { title: 'PDF en Images', templateId: 'tpl-pdf-to-images', endpoint: '/api/pdf-to-images' },
         'merge-pdf': { title: 'Fusionner PDF', templateId: 'tpl-merge-pdf', endpoint: '/api/merge-pdf' },
@@ -912,7 +912,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         'draw-pdf': { title: 'Dessiner sur PDF', templateId: 'tpl-draw-pdf', endpoint: '/api/draw-pdf' }
     };
 
-    // Open Modal
+    // Ouverture Modale
     bureautiqueItems.forEach(item => {
         item.addEventListener('click', () => {
             const toolKey = item.dataset.tool;
@@ -928,20 +928,20 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         });
     });
 
-    // Close Modal
+    // Fermeture Modale
     if (closeToolBtn) {
         closeToolBtn.addEventListener('click', () => {
             toolModal.classList.remove('active');
         });
     }
 
-    // Initialize logic for specific tool
+    // Initialiser la logique spécifique à l'outil
     const initToolLogic = (toolKey, config) => {
         if (toolKey === 'add-signature') {
             setupSignatureTool(config);
             return;
         }
-        // Special Visual Editor for 'edit-pdf'
+        // Éditeur Visuel spécial pour 'edit-pdf'
         if (toolKey === 'edit-pdf') {
             setupVisualEditor(config);
             return;
@@ -1000,7 +1000,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
             }
         }
 
-        // Specific Logic for Signature/Draw (Two Inputs)
+        // Logique spécifique pour Signature/Dessin (Deux entrées)
         if (toolKey === 'add-signature' || toolKey === 'draw-pdf') {
             const sigDrop = toolContentArea.querySelector('.sig-drop') || toolContentArea.querySelector('.sig-input-wrapper');
             const sigInput = toolContentArea.querySelector('.sig-input');
@@ -1018,7 +1018,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
             }
         }
 
-        // Process Action
+        // Action de Traitement
         processBtn.addEventListener('click', async () => {
             if (selectedFiles.length === 0) {
                 showStatus(statusArea, 'Veuillez sélectionner un fichier', 'error');
@@ -1033,7 +1033,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
                 formData.append('file', selectedFiles[0]);
             }
 
-            // Add extra parameters
+            // Ajouter les paramètres supplémentaires
             const inputs = toolContentArea.querySelectorAll('input:not([type="file"])');
             inputs.forEach(input => {
                 if (input.className.includes('page-range')) formData.append('pages', input.value);
@@ -1046,7 +1046,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
                 if (input.className.includes('color-rgb')) formData.append('color', input.value);
             });
 
-            // Special case for signature/draw file
+            // Cas spécial pour fichier signature/dessin
             if (toolKey === 'add-signature' || toolKey === 'draw-pdf') {
                 const sigInput = toolContentArea.querySelector('.sig-input');
                 if (sigInput && sigInput.files[0]) {
@@ -1059,7 +1059,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
 
             const originalButtonHtml = processBtn.innerHTML;
             processBtn.disabled = true;
-            // Show "Uploading..." first because the fetch request includes the file upload
+            // Afficher "Téléchargement..." en premier car la requête inclut l'upload
             processBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up fa-bounce"></i> Téléchargement...';
             statusArea.classList.add('hidden');
 
@@ -1101,7 +1101,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         element.classList.remove('hidden');
     }
 
-    // --- VISUAL PDF EDITOR LOGIC ---
+    // --- LOGIQUE ÉDITEUR VISUEL PDF ---
     function setupVisualEditor(config) {
         const ui = toolContentArea.querySelector('#visual-editor-ui');
         const dropZone = toolContentArea.querySelector('#visual-pdf-drop');
@@ -1118,12 +1118,12 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         let activeTextElement = null;
         let scale = 1.0;
 
-        // Reset UI
+        // Réinitialiser UI
         ui.classList.add('hidden');
         dropZone.classList.remove('hidden');
         dropZone.querySelector('p').textContent = 'Glissez votre PDF à éditer';
         
-        // Handle File Selection
+        // Gestion Sélection Fichier
         dropZone.onclick = () => fileInput.click();
         fileInput.onchange = async (e) => {
             if (e.target.files[0]) {
@@ -1137,7 +1137,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
                 ui.classList.remove('hidden');
                 statusArea.classList.add('hidden');
                 
-                // Render PDF
+                // Rendu PDF
                 const arrayBuffer = await file.arrayBuffer();
                 const loadingTask = pdfjsLib.getDocument(arrayBuffer);
                 currentPdf = await loadingTask.promise;
@@ -1145,7 +1145,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
                 const page = await currentPdf.getPage(1);
                 const viewport = page.getViewport({ scale: 1.0 });
                 
-                // Scale canvas to fit container width if needed
+                // Mettre à l'échelle le canvas pour s'adapter à la largeur si nécessaire
                 const containerWidth = toolContentArea.clientWidth - 40; // padding
                 scale = containerWidth < viewport.width ? containerWidth / viewport.width : 1.0;
                 const scaledViewport = page.getViewport({ scale: scale });
@@ -1161,7 +1161,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
             }
         };
 
-        // Add Text Tool
+        // Outil Ajouter Texte
         addTextBtn.onclick = () => {
             if (activeTextElement) return; // Only one text for now (backend limitation)
             
@@ -1183,7 +1183,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
             canvasContainer.appendChild(textEl);
             activeTextElement = textEl;
             
-            // Drag Logic
+            // Logique de Déplacement (Drag)
             let isDragging = false;
             let startX, startY, initialLeft, initialTop;
 
@@ -1210,12 +1210,12 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
                 if(textEl) textEl.style.cursor = 'move';
             });
             
-            // Styling updates
+            // Mises à jour de style
             document.getElementById('editor-color').onchange = (e) => textEl.style.color = e.target.value;
             document.getElementById('editor-size').onchange = (e) => textEl.style.fontSize = e.target.value + 'px';
         };
 
-        // Save Action
+        // Action Sauvegarder
         saveBtn.onclick = async () => {
             if (!activeTextElement) {
                 alert('Ajoutez du texte d\'abord !');
@@ -1413,7 +1413,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
 
     // --- REVIEWS LOGIC ---
     
-    // Load Reviews
+    // Chargement des Avis
     const loadReviews = async () => {
         try {
             const res = await fetch('/api/reviews');
@@ -1443,7 +1443,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         }
     };
 
-    // Carousel Auto-Scroll
+    // Défilement Auto Carrousel
     setInterval(() => {
         const slider = document.getElementById('reviews-slider');
         if (!slider) return;
@@ -1466,13 +1466,13 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         cards[nextIndex].classList.add('active');
     }, 10000); // 10 seconds
 
-    // Initial Load
+    // Chargement Initial
     loadReviews();
 
-    // Review Submission
+    // Soumission d'Avis
     const reviewForm = document.getElementById('review-form');
     if (reviewForm) {
-        // Star Rating Logic
+        // Logique Notation Étoiles
         const starContainer = reviewForm.querySelector('.star-rating');
         const hiddenInput = document.getElementById('review-rating');
         const stars = starContainer.querySelectorAll('i');
@@ -1520,7 +1520,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
     }
     // --- UTILITIES EXPRESS LOGIC ---
 
-    // Tool Switcher (QR Code vs Password)
+    // Sélecteur d'Outils (QR Code vs Mot de passe)
     const utilModeBtns = document.querySelectorAll('.tool-mode-btn');
     const qrTool = document.getElementById('qrcode-tool');
     const passTool = document.getElementById('password-tool');
@@ -1532,7 +1532,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
             // Add to clicked
             btn.classList.add('active');
             
-            // Toggle Content
+            // Basculer le Contenu
             const toolType = btn.dataset.tool;
             if (toolType === 'qrcode') {
                 qrTool.classList.remove('hidden');
@@ -1544,7 +1544,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         });
     });
 
-    // --- QR CODE GENERATOR ---
+    // --- GÉNÉRATEUR QR CODE ---
     const qrData = document.getElementById('qr-data');
     const qrType = document.getElementById('qr-type');
     const qrColor = document.getElementById('qr-color');
@@ -1615,7 +1615,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
     }
 
 
-    // --- PASSWORD GENERATOR ---
+    // --- GÉNÉRATEUR DE MOT DE PASSE ---
     const passLength = document.getElementById('pass-length');
     const passLengthVal = document.getElementById('pass-length-val');
     const passUpper = document.getElementById('pass-uppercase');
@@ -1671,7 +1671,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         let password = "";
 
         if (keywords) {
-            // Mnemonic Mode
+            // Mode Mnémonique
             const map = { 'a': '@', 'e': '3', 'i': '1', 'o': '0', 's': '$', 't': '7' };
             password = keywords.split(/[\s,]+/).map(word => {
                 let transformed = word.split('').map(c => map[c.toLowerCase()] || c).join('');
@@ -1684,7 +1684,7 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
             }
             
         } else {
-            // Random Mode
+            // Mode Aléatoire
             const lower = "abcdefghijklmnopqrstuvwxyz";
             const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
             const numbers = "0123456789";
@@ -2505,6 +2505,275 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
                 link.click();
                 
                 status.innerHTML = '<i class="fa-solid fa-check" style="color: #00C851;"></i><p>PDF annoté prêt !</p>';
+                setTimeout(() => status.classList.add('hidden'), 3000);
+
+            } catch (err) {
+                console.error("Erreur:", err);
+                alert("Erreur sauvegarde.");
+            }
+        });
+    }
+
+    // === OUTIL AJOUTER TEXTE (MACHINE À ÉCRIRE) ===
+    const textContainer = document.getElementById('tpl-add-text');
+    if (textContainer) {
+        // --- Éléments UI ---
+        const dropZone = textContainer.querySelector('#text-pdf-drop');
+        const pdfInput = textContainer.querySelector('.pdf-input');
+        const workspace = textContainer.querySelector('#text-workspace');
+        
+        // Toolbar
+        const textContentInput = document.getElementById('text-input-content');
+        const fontSelect = document.getElementById('text-font');
+        const fontSizeInput = document.getElementById('text-size');
+        const colorInput = document.getElementById('text-color');
+        const btnUndo = document.getElementById('text-undo');
+        const btnClear = document.getElementById('text-clear');
+        
+        // Render & Layer
+        const pdfCanvas = document.getElementById('text-pdf-render');
+        const textLayer = document.getElementById('text-layer');
+        const btnPrev = document.getElementById('text-prev-page');
+        const btnNext = document.getElementById('text-next-page');
+        const pageSpan = document.getElementById('text-page-num');
+        const totalSpan = document.getElementById('text-total-pages');
+        const btnSave = document.getElementById('save-text-pdf');
+        
+        // --- État global Texte ---
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pdfScale = 1.0; 
+        let textAnnotations = {}; // { 1: [{x, y, text, font, size, color}], 2: ... }
+        let currentTextFile = null;
+
+        // --- 1. Chargement PDF ---
+        const loadTextPDF = async (file) => {
+            currentTextFile = file;
+            const arrayBuffer = await file.arrayBuffer();
+            const { getDocument } = window.pdfjsLib;
+            
+            try {
+                pdfDoc = await getDocument(arrayBuffer).promise;
+                totalSpan.textContent = pdfDoc.numPages;
+                pageNum = 1;
+                
+                dropZone.classList.add('hidden');
+                workspace.classList.remove('hidden');
+                
+                renderTextPage(pageNum);
+            } catch (err) {
+                console.error("Erreur PDF:", err);
+                alert("Impossible de lire le PDF.");
+            }
+        };
+
+        // --- 2. Rendu Page et Annotations ---
+        const renderTextPage = async (num) => {
+            pageSpan.textContent = num;
+            const page = await pdfDoc.getPage(num);
+            
+            const containerWidth = document.getElementById('text-render-container').clientWidth - 40;
+            const viewport = page.getViewport({ scale: 1 });
+            pdfScale = containerWidth / viewport.width;
+            if (pdfScale > 1.5) pdfScale = 1.5;
+            
+            const scaledViewport = page.getViewport({ scale: pdfScale });
+
+            // Canvas
+            pdfCanvas.width = scaledViewport.width;
+            pdfCanvas.height = scaledViewport.height;
+            textLayer.style.width = `${scaledViewport.width}px`;
+            textLayer.style.height = `${scaledViewport.height}px`;
+
+            // Render
+            await page.render({
+                canvasContext: pdfCanvas.getContext('2d'),
+                viewport: scaledViewport
+            }).promise;
+
+            // Afficher les annotations existantes pour cette page
+            textLayer.innerHTML = ''; // Clear old ones
+            if (textAnnotations[num]) {
+                textAnnotations[num].forEach((anno, index) => {
+                    createFloatingText(anno.x, anno.y, anno.text, anno.font, anno.size, anno.color, index);
+                });
+            }
+        };
+
+        // --- 3. Création de texte flottant ---
+        const createFloatingText = (x, y, textVal, fontVal, sizeVal, colorVal, indexIsNew = true) => {
+            const span = document.createElement('div');
+            span.textContent = textVal;
+            span.style.position = 'absolute';
+            span.style.left = `${x}px`;
+            span.style.top = `${y}px`;
+            span.style.fontFamily = fontVal;
+            span.style.fontSize = `${sizeVal * pdfScale}px`; // Scale visuel
+            span.style.color = colorVal;
+            span.style.whiteSpace = 'nowrap';
+            span.style.cursor = 'move';
+            span.style.userSelect = 'none';
+            span.style.padding = '2px 5px';
+            span.style.border = '1px dashed transparent';
+            
+            span.addEventListener('mouseover', () => span.style.border = '1px dashed #3498db');
+            span.addEventListener('mouseout', () => span.style.border = '1px dashed transparent');
+            
+            // Suppression au clic droit
+            span.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if(confirm('Supprimer ce texte ?')) {
+                    if (textAnnotations[pageNum]) {
+                        // Astuce simple: on re-render tout sans cet élément
+                        const currentAnnos = textAnnotations[pageNum];
+                        // Trouver l'index par contenu (simplifié)
+                        const idx = currentAnnos.findIndex(a => a.x === x && a.y === y && a.text === textVal);
+                        if (idx !== -1) currentAnnos.splice(idx, 1);
+                        renderTextPage(pageNum);
+                    }
+                }
+            });
+
+            textLayer.appendChild(span);
+        };
+
+        // Click sur le layer pour ajouter du texte
+        textLayer.addEventListener('click', (e) => {
+            // Ignorer si on clique sur un texte existant
+            if (e.target !== textLayer) return;
+
+            const textVal = textContentInput.value.trim();
+            if (!textVal) {
+                // Focus input avec une petite animation si vide
+                textContentInput.style.borderColor = 'orange';
+                setTimeout(() => textContentInput.style.borderColor = 'var(--glass-border)', 500);
+                return;
+            }
+
+            const rect = textLayer.getBoundingClientRect();
+            const x = e.clientX - rect.left; // Coordonnées relatives au layer
+            const y = e.clientY - rect.top;
+
+            // Stocker les données "brutes" (taille réelle PDF sera calculée à la sauvegarde)
+            const anno = {
+                x: x, 
+                y: y,
+                text: textVal,
+                font: fontSelect.value,
+                size: parseInt(fontSizeInput.value),
+                color: colorInput.value
+            };
+
+            if (!textAnnotations[pageNum]) textAnnotations[pageNum] = [];
+            textAnnotations[pageNum].push(anno);
+
+            createFloatingText(x, y, textVal, fontSelect.value, parseInt(fontSizeInput.value), colorInput.value);
+            
+            // Reset input pour enchainer
+            // textContentInput.value = ''; // Optionnel, certains préfèrent garder le texte pour le dupliquer
+        });
+
+        // --- 4. Outils ---
+        btnUndo.addEventListener('click', () => {
+            if (textAnnotations[pageNum] && textAnnotations[pageNum].length > 0) {
+                textAnnotations[pageNum].pop();
+                renderTextPage(pageNum);
+            }
+        });
+        
+        btnClear.addEventListener('click', () => {
+             if(confirm('Effacer tout le texte de cette page ?')) {
+                 textAnnotations[pageNum] = [];
+                 renderTextPage(pageNum);
+             }
+        });
+
+        // --- 5. Navigation ---
+        btnPrev.addEventListener('click', () => { if(pageNum > 1) { pageNum--; renderTextPage(pageNum); } });
+        btnNext.addEventListener('click', () => { if(pageNum < pdfDoc.numPages) { pageNum++; renderTextPage(pageNum); } });
+
+        // Load
+        dropZone.addEventListener('click', () => pdfInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; });
+        dropZone.addEventListener('dragleave', (e) => { dropZone.style.borderColor = 'var(--glass-border)'; });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files[0]) loadTextPDF(e.dataTransfer.files[0]);
+        });
+        pdfInput.addEventListener('change', (e) => { if(e.target.files[0]) loadTextPDF(e.target.files[0]); });
+
+        // --- 6. Sauvegarde ---
+        btnSave.addEventListener('click', async () => {
+            const status = document.getElementById('text-status');
+            status.classList.remove('hidden');
+            status.innerHTML = '<div class="loader"></div><p>Incrustation du texte...</p>';
+            
+            try {
+                const arrayBuffer = await currentTextFile.arrayBuffer();
+                const { PDFDocument, rgb, StandardFonts } = PDFLib; 
+                const pdf = await PDFDocument.load(arrayBuffer);
+                
+                // Précharge des polices
+                const helveticaFont = await pdf.embedFont(StandardFonts.Helvetica);
+                const timesFont = await pdf.embedFont(StandardFonts.TimesRoman);
+                const courierFont = await pdf.embedFont(StandardFonts.Courier);
+
+                const getFont = (name) => {
+                    if (name.includes('Times')) return timesFont;
+                    if (name.includes('Courier')) return courierFont;
+                    return helveticaFont;
+                };
+
+                // Conversion couleur Hex -> RGB
+                const hexToRgb = (hex) => {
+                    const r = parseInt(hex.slice(1, 3), 16) / 255;
+                    const g = parseInt(hex.slice(3, 5), 16) / 255;
+                    const b = parseInt(hex.slice(5, 7), 16) / 255;
+                    return rgb(r, g, b);
+                };
+
+                // Pour chaque page annotée
+                for (const [pNum, annos] of Object.entries(textAnnotations)) {
+                    if (!annos || annos.length === 0) continue;
+
+                    const page = pdf.getPage(parseInt(pNum) - 1);
+                    const { width, height } = page.getSize();
+                    
+                    // Ratio entre la taille d'affichage (canvas) et la taille réelle du PDF
+                    // pdfScale a été calculé lors du rendu : renderWidth / pdfWidth
+                    // Donc pour passer de renderCoord à pdfCoord : renderCoord / pdfScale
+                    // SAUF QUE: le rendu pdf.js peut être zoomé.
+                    // On recalcule le ratio précis ici est plus sûr.
+                    // Pour simplifier ici: on a X,Y sur le layer qui a la taille du viewport à scale 'pdfScale'.
+                    // La taille réelle est viewport.width / pdfScale.
+                    
+                    annos.forEach(anno => {
+                        // Coordonnées PDF (origin bottom-left usually, but pdf-lib uses top-left mostly for text... wait, pdf-lib uses bottom-left by default but drawText y is from bottom)
+                        // PDF-LIB : y origin is bottom-left.
+                        // Annotations : y origin is top-left (DOM).
+                        
+                        const pdfX = anno.x / pdfScale;
+                        // Inversion Y : hauteurPage - (yDOM / scale) - (taillePolice pour baseline correction approx)
+                        const pdfY = height - (anno.y / pdfScale) - (anno.size * 0.8);
+                        
+                        page.drawText(anno.text, {
+                            x: pdfX,
+                            y: pdfY,
+                            size: anno.size,
+                            font: getFont(anno.font),
+                            color: hexToRgb(anno.color)
+                        });
+                    });
+                }
+                
+                const pdfBytes = await pdf.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `text_added_${currentTextFile.name}`;
+                link.click();
+                
+                status.innerHTML = '<i class="fa-solid fa-check" style="color: #00C851;"></i><p>PDF Textuel Sauvegardé !</p>';
                 setTimeout(() => status.classList.add('hidden'), 3000);
 
             } catch (err) {

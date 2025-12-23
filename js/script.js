@@ -3173,10 +3173,9 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
     }
 
 
-            span.style.fontFamily = fontVal;
-            span.style.fontSize = `${sizeVal * pdfScale}px`; // Scale visuel
-            span.style.color = colorVal;
-            span.style.whiteSpace = 'nowrap';
+    // End of setupVisualEditor
+    // Ensure this is called correctly in initToolLogic
+}); // End DOMContentLoaded
             span.style.cursor = 'move';
             span.style.userSelect = 'none';
             span.style.padding = '2px 5px';

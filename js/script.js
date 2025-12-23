@@ -1704,10 +1704,21 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         updateStrengthMeter(password);
     };
 
+    // Génération du mot de passe
     if (generatePassBtn) {
-        generatePassBtn.addEventListener('click', generatePassword);
+        generatePassBtn.addEventListener('click', () => {
+            // Appel de la fonction de génération
+            generatePassword();
+            
+            // Après génération, on affiche le bouton d'export PDF
+            const exportPdfBtn = document.getElementById('export-pass-pdf-btn');
+            if (exportPdfBtn) {
+                exportPdfBtn.classList.remove('hidden');
+            }
+        });
     }
 
+    // Gestion du bouton copier
     if (copyPassBtn) {
         copyPassBtn.addEventListener('click', () => {
             if (passResult.value) {
@@ -1717,6 +1728,136 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
                     setTimeout(() => copyPassBtn.innerHTML = originalIcon, 2000);
                 });
             }
+        });
+    }
+
+    // === EXPORT PDF MOT DE PASSE ===
+    const exportPassPdfBtn = document.getElementById('export-pass-pdf-btn');
+    const passDescModal = document.getElementById('password-description-modal');
+    const closePassModal = document.getElementById('close-pass-modal');
+    const confirmExportPdf = document.getElementById('confirm-export-pdf');
+    const passDescInput = document.getElementById('pass-pdf-description');
+
+    // Ouvrir le modal quand on clique sur "Télécharger en PDF"
+    if (exportPassPdfBtn) {
+        exportPassPdfBtn.addEventListener('click', () => {
+            if (!passResult.value) {
+                alert('Veuillez d\'abord générer un mot de passe.');
+                return;
+            }
+            // Afficher le modal
+            passDescModal.classList.remove('hidden');
+            setTimeout(() => passDescModal.classList.add('active'), 10);
+            passDescInput.value = ''; // Réinitialiser le champ
+            passDescInput.focus();
+        });
+    }
+
+    // Fermer le modal
+    if (closePassModal) {
+        closePassModal.addEventListener('click', () => {
+            passDescModal.classList.remove('active');
+            setTimeout(() => passDescModal.classList.add('hidden'), 300);
+        });
+    }
+
+    // Générer le PDF quand on confirme
+    if (confirmExportPdf) {
+        confirmExportPdf.addEventListener('click', () => {
+            const password = passResult.value;
+            const description = passDescInput.value.trim() || 'Mot de passe sécurisé';
+            const strength = calculateStrength(password);
+            const currentDate = new Date().toLocaleDateString('fr-FR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            // Création du PDF avec jsPDF
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+
+            // En-tête avec logo/titre
+            pdf.setFillColor(139, 92, 246); // Couleur violet (--primary)
+            pdf.rect(0, 0, 210, 40, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(28);
+            pdf.text('🔐 MediaMaster Security', 105, 25, { align: 'center' });
+
+            // Corps du document
+            pdf.setTextColor(0, 0, 0);
+            pdf.setFontSize(16);
+            pdf.text('Mot de Passe Généré', 105, 60, { align: 'center' });
+
+            // Description
+            pdf.setFontSize(12);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text(`Description : ${description}`, 20, 75);
+
+            // Mot de passe en gros avec police monospace
+            pdf.setFontSize(18);
+            pdf.setFont('courier', 'bold');
+            pdf.setTextColor(0, 0, 0);
+            const passY = 95;
+            pdf.text(password, 105, passY, { align: 'center' });
+
+            // Cadre autour du mot de passe
+            pdf.setDrawColor(139, 92, 246);
+            pdf.setLineWidth(0.5);
+            pdf.rect(15, passY - 10, 180, 20, 'S');
+
+            // Niveau de force
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(12);
+            let strengthText = '';
+            let strengthColor = [0, 0, 0];
+            if (strength < 40) {
+                strengthText = 'Force : Faible 😟';
+                strengthColor = [255, 68, 68];
+            } else if (strength < 70) {
+                strengthText = 'Force : Moyenne 😐';
+                strengthColor = [255, 187, 51];
+            } else {
+                strengthText = 'Force : Excellente 😎';
+                strengthColor = [0, 200, 81];
+            }
+            pdf.setTextColor(...strengthColor);
+            pdf.text(strengthText, 105, 125, { align: 'center' });
+
+            // Informations complémentaires
+            pdf.setTextColor(100, 100, 100);
+            pdf.setFontSize(10);
+            pdf.text(`Date de génération : ${currentDate}`, 20, 145);
+            pdf.text(`Longueur : ${password.length} caractères`, 20, 155);
+
+            // Conseils de sécurité
+            pdf.setFontSize(11);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text('🛡️ Conseils de Sécurité :', 20, 175);
+            const tips = [
+                '1. Ne partagez jamais ce mot de passe par email ou SMS',
+                '2. Changez-le régulièrement (tous les 3-6 mois)',
+                '3. Utilisez un gestionnaire de mots de passe',
+                '4. Activez la double authentification quand c\'est possible'
+            ];
+            pdf.setFontSize(9);
+            pdf.setTextColor(80, 80, 80);
+            tips.forEach((tip, index) => {
+                pdf.text(tip, 25, 185 + (index * 8));
+            });
+
+            // Pied de page
+            pdf.setFontSize(8);
+            pdf.setTextColor(150, 150, 150);
+            pdf.text('Généré par MediaMaster - 100% sécurisé et confidentiel', 105, 280, { align: 'center' });
+
+            // Télécharger le PDF
+            const fileName = `password_${description.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
+            pdf.save(fileName);
+
+            // Fermer le modal
+            passDescModal.classList.remove('active');
+            setTimeout(() => passDescModal.classList.add('hidden'), 300);
         });
     }
 

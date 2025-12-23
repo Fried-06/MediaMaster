@@ -434,6 +434,11 @@
                     <button id="generate-pass-btn" class="action-btn">
                         <span>Générer Sécurisé</span> <i class="fa-solid fa-shield-halved"></i>
                     </button>
+                    
+                    <!-- Bouton pour télécharger le mot de passe en PDF (visible après génération) -->
+                    <button id="export-pass-pdf-btn" class="action-btn secondary-btn hidden" style="margin-top: 10px; background: var(--secondary);">
+                        <span>📥 Télécharger en PDF</span> <i class="fa-solid fa-file-pdf"></i>
+                    </button>
 
                     <div class="security-notice" style="margin-top: 20px; padding: 10px; background: rgba(0,255,0,0.1); border-radius: 8px; font-size: 0.8rem; text-align: center;">
                         <i class="fa-solid fa-lock"></i> 100% Client-Side. Aucun mot de passe n'est envoyé au serveur.
@@ -449,6 +454,14 @@
             <div class="hero-text">
                 <h1>📄 Bureautique</h1>
                 <p>Convertissez, modifiez et gérez vos fichiers PDF et documents Office.</p>
+                
+                <!-- Animation : Feuilles de papier s'organisant -->
+                <div class="papers-stack-animation">
+                    <!-- Trois feuilles qui s'empilent -->
+                    <div class="paper-sheet"></div>
+                    <div class="paper-sheet"></div>
+                    <div class="paper-sheet"></div>
+                </div>
             </div>
             
             <div class="card glass-panel">
@@ -942,6 +955,25 @@
                 <span>Enregistrer le fichier</span>
                 <i class="fa-solid fa-download"></i>
             </a>
+        </div>
+    </div>
+    
+    <!-- Modal Description Mot de Passe PDF -->
+    <div id="password-description-modal" class="image-modal hidden">
+        <div class="glass-panel" style="max-width: 500px; padding: 30px; border-radius: 20px; position: relative;">
+            <span class="close-modal" id="close-pass-modal">&times;</span>
+            <h2 style="color: var(--primary); margin-bottom: 20px; text-align: center;">📥 Exporter en PDF</h2>
+            <p style="margin-bottom: 15px; color: var(--text-muted); text-align: center;">Ajoutez une description pour vous souvenir de l'usage de ce mot de passe.</p>
+            
+            <div class="input-group">
+                <label>Description (optionnel)</label>
+                <input type="text" id="pass-pdf-description" placeholder="Ex: Compte Gmail 2025, Wifi Maison, etc." 
+                       style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);">
+            </div>
+            
+            <button id="confirm-export-pdf" class="action-btn" style="width: 100%; margin-top: 20px;">
+                <span>Générer le PDF</span> <i class="fa-solid fa-file-pdf"></i>
+            </button>
         </div>
     </div>
 

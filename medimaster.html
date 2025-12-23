@@ -41,7 +41,7 @@
             <button class="nav-btn" data-tab="download"><i class="fa-solid fa-cloud-arrow-down"></i> Télécharger</button>
             <button class="nav-btn" data-tab="convert"><i class="fa-solid fa-wand-magic"></i> Convertir</button>
             <button class="nav-btn" data-tab="images"><i class="fa-solid fa-image"></i> Images</button>
-            <button class="nav-btn disabled" data-tab="tools" disabled><i class="fa-solid fa-toolbox"></i> Outils <span class="nav-soon">(Bientôt)</span></button>
+            <button class="nav-btn" data-tab="tools"><i class="fa-solid fa-toolbox"></i> Utilitaires <span style="font-size: 0.6em; background: var(--secondary); padding: 2px 5px; border-radius: 10px; margin-left: 5px;">NEW</span></button>
             <button class="nav-btn" data-tab="bureautique"><i class="fa-solid fa-file-pdf"></i> Bureautique</button>
             <button class="nav-btn" data-tab="suggestions-reviews"><i class="fa-solid fa-star"></i> Avis & Suggestions</button>
             
@@ -90,11 +90,11 @@
                         <p>Vidéo & Audio</p>
                         <div class="glow-border"></div>
                     </div>
-                    <div class="landing-card disabled" title="Fonctionnalité à venir">
-                        <div class="card-icon"><i class="fa-solid fa-toolbox"></i></div>
-                        <h3>Outils</h3>
-                        <p>Compression, IA...</p>
-                        <span class="coming-soon-badge">Fonctionnalité à venir</span>
+                    <div class="landing-card" onclick="switchTab('tools')">
+                        <div class="card-icon"><i class="fa-solid fa-bolt"></i></div>
+                        <h3>Utilitaires</h3>
+                        <p>QR Code, Mdp...</p>
+                        <div class="glow-border"></div>
                     </div>
                     <div class="landing-card" onclick="switchTab('bureautique')">
                         <div class="card-icon"><i class="fa-solid fa-file-pdf"></i></div>
@@ -283,26 +283,116 @@
             </div>
         </section>
 
-        <!-- Tools Section -->
+        <!-- Tools Section (Utilitaires Express) -->
         <section id="tools-section" class="tab-content">
             <div class="hero-text">
-                <h1>Boîte à Outils</h1>
-                <p>Compressez vos vidéos, supprimez les fonds et watermarks de vos images.</p>
+                <h1>Utilitaires Express</h1>
+                <p>Outils instantanés, sécurisés et gratuits. Aucune donnée n'est stockée.</p>
             </div>
 
             <div class="card glass-panel">
                 <!-- Tool Selection -->
                 <div class="convert-mode-switch">
-                    <button class="tool-mode-btn active" data-tool="compress" style="position: relative;">
-                        <i class="fa-solid fa-compress"></i> Compression Vidéo
-                        <span class="new-badge" style="top: -5px; right: -5px;">NEW</span>
+                    <button class="tool-mode-btn active" data-tool="qrcode" style="position: relative;">
+                        <i class="fa-solid fa-qrcode"></i> QR Code
+                        <span class="new-badge" style="top: -5px; right: -5px;">PRO</span>
                     </button>
-                    <button class="tool-mode-btn" data-tool="removebg" style="position: relative;">
-                        <i class="fa-solid fa-eraser"></i> Supprimer Fond
-                        <span class="new-badge" style="top: -5px; right: -5px;">NEW</span>
+                    <button class="tool-mode-btn" data-tool="password" style="position: relative;">
+                        <i class="fa-solid fa-key"></i> Mots de Passe
+                        <span class="new-badge" style="top: -5px; right: -5px;">SECURE</span>
                     </button>
-                    <button class="tool-mode-btn" data-tool="removewm" style="position: relative;">
-                        <i class="fa-solid fa-droplet-slash"></i> Supprimer Watermark
+                </div>
+
+                <!-- QR CODE GENERATOR -->
+                <div id="qrcode-tool" class="tool-content">
+                    <div class="options-grid" style="grid-template-columns: 1fr 1fr;">
+                        <div class="input-group">
+                            <label>Type de Contenu</label>
+                            <select id="qr-type">
+                                <option value="url">Lien URL</option>
+                                <option value="text">Texte Libre</option>
+                                <option value="wifi">Wi-Fi</option>
+                                <option value="email">Email</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Couleur</label>
+                            <input type="color" id="qr-color" value="#000000" style="width: 100%; height: 40px; cursor: pointer;">
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Inputs -->
+                    <div id="qr-input-container">
+                        <input type="text" id="qr-data" placeholder="https://votre-site.com" class="qr-input">
+                    </div>
+
+                    <!-- Visual Options -->
+                    <div class="options-grid" style="margin-top: 15px;">
+                        <div class="input-group">
+                            <label>Style</label>
+                            <select id="qr-style">
+                                <option value="square">Carré (Classique)</option>
+                                <option value="rounded">Arrondi (Soft)</option>
+                                <option value="dots">Points (Moderne)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; margin-top: 20px; align-items: flex-start;">
+                        <div id="qrcode-canvas" style="background: white; padding: 10px; border-radius: 10px;"></div>
+                        <div style="flex: 1;">
+                           <button id="generate-qr-btn" class="action-btn" style="margin-bottom: 10px;">
+                                <span>Générer</span> <i class="fa-solid fa-bolt"></i>
+                            </button> 
+                            <button id="download-qr-pdf" class="action-btn secondary-btn" style="background: var(--text-main); color: var(--bg-dark);">
+                                <span>Télécharger PDF (A4)</span> <i class="fa-solid fa-file-pdf"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASSWORD GENERATOR -->
+                <div id="password-tool" class="tool-content hidden">
+                    
+                    <div class="password-display-box">
+                        <input type="text" id="password-result" readonly placeholder="Votre mot de passe s'affichera ici">
+                        <button id="copy-password" title="Copier"><i class="fa-regular fa-copy"></i></button>
+                    </div>
+                    
+                    <div id="password-strength-meter">
+                        <div class="strength-bar"></div>
+                        <span class="strength-text">Force : Inconnue</span>
+                    </div>
+
+                    <div class="options-grid">
+                        <div class="input-group">
+                            <label>Longueur : <span id="pass-length-val">16</span></label>
+                            <input type="range" id="pass-length" min="6" max="64" value="16">
+                        </div>
+                        <div class="checkbox-group" style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <label><input type="checkbox" id="pass-uppercase" checked> Majuscules (A-Z)</label>
+                            <label><input type="checkbox" id="pass-numbers" checked> Chiffres (0-9)</label>
+                            <label><input type="checkbox" id="pass-symbols" checked> Symboles (!@#)</label>
+                        </div>
+                    </div>
+
+                    <div class="input-group" style="margin-top: 15px;">
+                       <label>Mode Mnémonique (Optionnel)</label>
+                       <input type="text" id="pass-keywords" placeholder="Ex: chat, maison, 2025 (pour créer C#aT!Mai$on2025)">
+                       <small style="color: var(--text-muted);">Laissez vide pour un mot de passe 100% aléatoire.</small>
+                    </div>
+
+                    <button id="generate-pass-btn" class="action-btn">
+                        <span>Générer Sécurisé</span> <i class="fa-solid fa-shield-halved"></i>
+                    </button>
+
+                    <div class="security-notice" style="margin-top: 20px; padding: 10px; background: rgba(0,255,0,0.1); border-radius: 8px; font-size: 0.8rem; text-align: center;">
+                        <i class="fa-solid fa-lock"></i> 100% Client-Side. Aucun mot de passe n'est envoyé au serveur.
+                    </div>
+                </div>
+
+            </div>
+        </section>
                         <span class="new-badge" style="top: -5px; right: -5px;">NEW</span>
                     </button>
                 </div>
@@ -883,6 +973,9 @@
         </div>
     </div>
 
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="js/script.js"></script>
 </body>
 </html>

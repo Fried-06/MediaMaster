@@ -507,6 +507,43 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
     convertStatus.className = 'status-area hidden';
     convertBtn.parentNode.appendChild(convertStatus);
 
+    // Voice Lock Logic
+    const voiceSelect = document.getElementById('voice-select');
+    const updateVoiceLock = () => {
+        const activeMode = document.querySelector('.mode-btn.active').dataset.mode;
+        if (voiceSelect) {
+            if (activeMode === 'text-audio') {
+                voiceSelect.disabled = false;
+                voiceSelect.parentElement.style.opacity = '1';
+                voiceSelect.title = '';
+            } else {
+                voiceSelect.disabled = true;
+                voiceSelect.parentElement.style.opacity = '0.5';
+                voiceSelect.title = 'Disponible uniquement en mode Texte vers Audio';
+            }
+        }
+    };
+
+    // Mode Switchers
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    modeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            modeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Show relevant content
+            const mode = btn.dataset.mode;
+            document.querySelectorAll('.mode-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(`${mode}-mode`).classList.add('active');
+            
+            // Update Voice Lock
+            updateVoiceLock();
+        });
+    });
+    
+    // Initial Lock Check
+    updateVoiceLock();
+
     convertBtn.addEventListener('click', async () => {
         const activeMode = document.querySelector('.mode-btn.active').dataset.mode;
         const originalHtml = convertBtn.innerHTML;

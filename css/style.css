@@ -1594,68 +1594,146 @@ p, span, h1, h2, h3, a {
     .review-content { text-align: center; }
 }
 
-/* Disabled / Coming Soon Styles */
-.landing-card.disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    pointer-events: none;
-    filter: grayscale(80%);
+/* --- UTILITIES SECTION STYLES --- */
+#qrcode-tool, #password-tool {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Tool Mode Switch Styles */
+.tool-mode-btn {
     position: relative;
+    overflow: hidden;
 }
 
-.landing-card.disabled:hover {
-    transform: none;
-    box-shadow: none;
-}
-
-.coming-soon-badge {
-    display: block;
-    margin-top: 10px;
-    padding: 5px 12px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px dashed var(--text-muted);
-    border-radius: 20px;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.nav-btn.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    filter: grayscale(60%);
-}
-
-.nav-soon {
-    font-size: 0.7rem;
-    opacity: 0.7;
-    font-style: italic;
-}
-
-/* Tools Section Disabled Overlay */
-#tools-section {
-    position: relative;
-}
-
-#tools-section::before {
-    content: "Fonctionnalité à venir - Bientôt disponible !";
+.new-badge {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.8);
-    color: var(--text-muted);
-    padding: 20px 40px;
-    border-radius: 15px;
-    font-size: 1.2rem;
-    z-index: 100;
-    border: 2px dashed var(--primary);
-    text-align: center;
+    top: -5px;
+    right: -5px;
+    background: var(--secondary);
+    color: white;
+    font-size: 0.6rem;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-#tools-section > * {
-    opacity: 0.3;
-    pointer-events: none;
-    filter: grayscale(100%);
+/* Password Tool Styles */
+.password-display-box {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+#password-result {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-family: monospace;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+}
+
+#copy-password {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 5px 10px;
+    transition: transform 0.2s;
+}
+
+#copy-password:active { transform: scale(0.9); }
+
+#password-strength-meter {
+    height: 5px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    margin-bottom: 5px;
+    overflow: hidden;
+    position: relative;
+}
+
+.strength-bar {
+    height: 100%;
+    width: 0%;
+    transition: all 0.3s ease;
+}
+
+.strength-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* SECTION ANIMATIONS */
+
+/* Download: Floating Cloud Items */
+#download-section .hero-text h1::after {
+    content: '☁️';
+    display: inline-block;
+    animation: float 3s ease-in-out infinite;
+    margin-left: 10px;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+/* Convert: Rotating Gears */
+#convert-section .hero-text h1::after {
+    content: '⚙️';
+    display: inline-block;
+    animation: spin 4s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* Images: Pulse Effect */
+#images-section .hero-text h1::after {
+    content: '🖼️';
+    display: inline-block;
+    animation: pulse-img 2s infinite;
+    margin-left: 10px;
+}
+
+@keyframes pulse-img {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Utilities: Unlocking Lock */
+#tools-section .hero-text h1::after {
+    content: '🔓';
+    display: inline-block;
+    animation: unlock 2s ease-in-out infinite;
+    margin-left: 10px;
+}
+
+@keyframes unlock {
+    0%, 100% { transform: rotate(0deg); }
+    20% { transform: rotate(-10deg); }
+    40% { transform: rotate(10deg); }
+    60% { transform: rotate(-5deg); filter: hue-rotate(90deg); }
+}
+
+/* Bureautique: Stacking Papers */
+#bureautique-section .hero-text h1::after {
+    content: '📄';
+    display: inline-block;
+    animation: stack 2s infinite;
+    margin-left: 10px;
+}
+
+@keyframes stack {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-5px) rotate(5deg); box-shadow: 2px 2px 0 rgba(255,255,255,0.2); }
 }

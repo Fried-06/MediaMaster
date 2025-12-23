@@ -20,10 +20,7 @@
         <div class="year-giant">2026</div>
         <div class="fireworks-container"></div>
     </div>
-    <div class="snowflakes" aria-hidden="true">
-        <div class="snowflake">❅</div><div class="snowflake">❆</div><div class="snowflake">❄</div><div class="snowflake">❅</div><div class="snowflake">❆</div><div class="snowflake">❄</div>
-        <div class="snowflake">❅</div><div class="snowflake">❆</div><div class="snowflake">❄</div><div class="snowflake">❅</div>
-    </div>
+    <div id="simple-snow-container" class="simple-snow hidden"></div>
 
     <nav class="navbar">
         <div class="logo">
@@ -41,7 +38,7 @@
             <button class="nav-btn" data-tab="download"><i class="fa-solid fa-cloud-arrow-down"></i> Télécharger</button>
             <button class="nav-btn" data-tab="convert"><i class="fa-solid fa-wand-magic"></i> Convertir</button>
             <button class="nav-btn" data-tab="images"><i class="fa-solid fa-image"></i> Images</button>
-            <button class="nav-btn" data-tab="tools"><i class="fa-solid fa-toolbox"></i> Utilitaires <span style="font-size: 0.6em; background: var(--secondary); padding: 2px 5px; border-radius: 10px; margin-left: 5px;">NEW</span></button>
+            <button class="nav-btn" data-tab="tools"><i class="fa-solid fa-toolbox"></i> Utilitaires</button>
             <button class="nav-btn" data-tab="bureautique"><i class="fa-solid fa-file-pdf"></i> Bureautique</button>
             <button class="nav-btn" data-tab="suggestions-reviews"><i class="fa-solid fa-star"></i> Avis & Suggestions</button>
             
@@ -130,14 +127,14 @@
                 <p>Sauvegardez vos vidéos préférées de TikTok, Instagram, Facebook et Snapchat en haute qualité.</p>
                 
                 <!-- Animation : Fichiers volant vers un nuage -->
-                <div class="flying-files-animation">
-                    <!-- Nuage de destination (SVG inline) -->
+            </div>
+            <!-- Animation hors du bloc hero-text pour placement intermédiaire -->
+            <div class="animation-wrapper">
+                 <div class="flying-files-animation">
                     <svg class="cloud-target" width="80" height="50" viewBox="0 0 80 50">
                         <path d="M10,30 Q10,20 20,20 Q20,10 30,10 Q40,10 40,20 Q50,20 50,30 Q50,40 40,40 Q10,40 10,30" 
                               fill="#e0e0e0" opacity="0.8"/>
                     </svg>
-                   
-                    <!-- Fichiers qui volent vers le nuage (icônes SVG) -->
                     <svg class="file-item" viewBox="0 0 20 24" fill="var(--primary)">
                         <path d="M4,0 L16,0 L16,4 L20,4 L20,24 L0,24 L0,0 Z M16,0 L16,4 L20,4 Z"/>
                     </svg>
@@ -147,7 +144,8 @@
                     <svg class="file-item" viewBox="0 0 20 24" fill="var(--primary)">
                         <path d="M4,0 L16,0 L16,4 L20,4 L20,24 L0,24 L0,0 Z M16,0 L16,4 L20,4 Z"/>
                     </svg>
-                </div>
+                 </div>
+            </div>
             </div>
 
             <div class="card glass-panel">
@@ -213,17 +211,16 @@
                 <p>Convertissez vidéos en audio ou texte en parole avec nos voix IA ultra-réalistes.</p>
                 
                 <!-- Animation : Onde sonore transformée -->
-                <div class="transform-animation">
-                    <!-- Onde sonore (barres verticales animées) -->
+            </div>
+            <!-- Animation intermédiaire -->
+            <div class="animation-wrapper">
+                 <div class="transform-animation">
                     <div class="sound-wave">
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
-                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+                        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
                     </div>
-                </div>
+                 </div>
+            </div>
             </div>
 
             <div class="card glass-panel">
@@ -390,9 +387,14 @@
                     <div style="display: flex; gap: 20px; margin-top: 20px; align-items: flex-start;">
                         <div id="qrcode-canvas" style="background: white; padding: 10px; border-radius: 10px;"></div>
                         <div style="flex: 1;">
-                           <button id="generate-qr-btn" class="action-btn" style="margin-bottom: 10px;">
-                                <span>Générer</span> <i class="fa-solid fa-bolt"></i>
-                            </button> 
+                           <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                <button id="generate-qr-btn" class="action-btn" style="flex: 1;">
+                                    <span>Générer</span> <i class="fa-solid fa-bolt"></i>
+                                </button>
+                                <button id="reset-qr-btn" class="action-btn secondary-btn" style="width: auto; background: var(--glass-bg);" title="Réinitialiser">
+                                    <i class="fa-solid fa-rotate-right"></i>
+                                </button>
+                           </div>
                             <button id="download-qr-pdf" class="action-btn secondary-btn" style="background: var(--text-main); color: var(--bg-dark);">
                                 <span>Télécharger PDF (A4)</span> <i class="fa-solid fa-file-pdf"></i>
                             </button>
@@ -408,9 +410,18 @@
                         <button id="copy-password" title="Copier"><i class="fa-regular fa-copy"></i></button>
                     </div>
                     
-                    <div id="password-strength-meter">
-                        <div class="strength-bar"></div>
-                        <span class="strength-text">Force : Inconnue</span>
+                    <!-- Password Strength Tester IMPROVED -->
+                    <div id="password-strength-tester" style="margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px;">
+                        <h4 style="margin-bottom: 10px;"><i class="fa-solid fa-stethoscope"></i> Testeur de Robustesse</h4>
+                        <input type="text" id="test-password-input" placeholder="Testez votre propre mot de passe..." style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: white; margin-bottom: 10px;">
+                        
+                        <div class="strength-bar-container" style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div class="strength-bar" id="test-strength-bar" style="width: 0%; height: 100%; background: red; transition: width 0.3s, background 0.3s;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 0.9em;">
+                            <span id="test-strength-text">Force: 0%</span>
+                            <span id="test-crack-time" style="color: var(--text-muted);">Temps de crack: Instantané</span>
+                        </div>
                     </div>
 
                     <div class="options-grid">
@@ -431,9 +442,14 @@
                        <small style="color: var(--text-muted);">Laissez vide pour un mot de passe 100% aléatoire.</small>
                     </div>
 
-                    <button id="generate-pass-btn" class="action-btn">
-                        <span>Générer Sécurisé</span> <i class="fa-solid fa-shield-halved"></i>
-                    </button>
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button id="generate-pass-btn" class="action-btn" style="flex: 1;">
+                            <span>Générer Sécurisé</span> <i class="fa-solid fa-shield-halved"></i>
+                        </button>
+                        <button id="reset-pass-btn" class="action-btn secondary-btn" style="width: auto; background: var(--glass-bg);" title="Réinitialiser">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
                     
                     <!-- Bouton pour télécharger le mot de passe en PDF (visible après génération) -->
                     <button id="export-pass-pdf-btn" class="action-btn secondary-btn hidden" style="margin-top: 10px; background: var(--secondary);">
@@ -456,12 +472,15 @@
                 <p>Convertissez, modifiez et gérez vos fichiers PDF et documents Office.</p>
                 
                 <!-- Animation : Feuilles de papier s'organisant -->
+            </div>
+            <!-- Animation intermédiaire -->
+             <div class="animation-wrapper">
                 <div class="papers-stack-animation">
-                    <!-- Trois feuilles qui s'empilent -->
                     <div class="paper-sheet"></div>
                     <div class="paper-sheet"></div>
                     <div class="paper-sheet"></div>
                 </div>
+             </div>
             </div>
             
             <div class="card glass-panel">
@@ -471,73 +490,58 @@
             <div class="card glass-panel">
                 <div class="bureautique-grid">
                     <div class="bureautique-item" data-tool="pdf-to-images">
-                        <span class="new-badge">NEW</span>
                         <div class="icon pdf"><i class="fa-solid fa-images"></i></div>
                         <span class="name">PDF → Images</span>
                     </div>
                     <div class="bureautique-item" data-tool="merge-pdf">
-                        <span class="new-badge">NEW</span>
                         <div class="icon merge"><i class="fa-solid fa-object-group"></i></div>
                         <span class="name">Fusionner PDF</span>
                     </div>
                     <div class="bureautique-item" data-tool="extract-pages">
-                        <span class="new-badge">NEW</span>
                         <div class="icon extract"><i class="fa-solid fa-file-export"></i></div>
                         <span class="name">Extraire pages</span>
                     </div>
                     <div class="bureautique-item" data-tool="compress-pdf">
-                        <span class="new-badge">NEW</span>
                         <div class="icon compress"><i class="fa-solid fa-file-zipper"></i></div>
                         <span class="name">Compresser PDF</span>
                     </div>
                     <div class="bureautique-item" data-tool="lock-pdf">
-                        <span class="new-badge">NEW</span>
                         <div class="icon lock"><i class="fa-solid fa-lock"></i></div>
                         <span class="name">Verrouiller PDF</span>
                     </div>
                     <div class="bureautique-item" data-tool="pdf-to-word">
-                        <span class="new-badge">NEW</span>
                         <div class="icon word"><i class="fa-solid fa-file-word"></i></div>
                         <span class="name">PDF → Word</span>
                     </div>
                     <div class="bureautique-item" data-tool="add-watermark">
-                        <span class="new-badge">NEW</span>
                         <div class="icon watermark"><i class="fa-solid fa-droplet"></i></div>
                         <span class="name">Ajouter filigrane</span>
                     </div>
                     <div class="bureautique-item" data-tool="add-signature">
-                        <span class="new-badge">NEW</span>
                         <div class="icon signature"><i class="fa-solid fa-signature"></i></div>
                         <span class="name">Signature</span>
                     </div>
                     <div class="bureautique-item" data-tool="edit-pdf">
-                        <span class="new-badge">NEW</span>
                         <div class="icon edit"><i class="fa-solid fa-pen-to-square"></i></div>
                         <span class="name">Éditer PDF</span>
                     </div>
-                    <!-- NEW TOOLS RE-ADDED -->
                     <div class="bureautique-item" data-tool="img-to-pdf">
-                        <span class="new-badge">NEW</span>
                         <div class="icon pdf"><i class="fa-solid fa-image"></i></div>
                         <span class="name">Image → PDF</span>
                     </div>
                     <div class="bureautique-item" data-tool="word-to-pdf">
-                        <span class="new-badge">NEW</span>
                         <div class="icon word"><i class="fa-solid fa-file-word"></i></div>
                         <span class="name">Word → PDF</span>
                     </div>
                     <div class="bureautique-item" data-tool="ppt-to-pdf">
-                        <span class="new-badge">NEW</span>
                         <div class="icon extract"><i class="fa-solid fa-file-powerpoint"></i></div>
                         <span class="name">PPT → PDF</span>
                     </div>
                     <div class="bureautique-item" data-tool="unlock-pdf">
-                        <span class="new-badge">NEW</span>
                         <div class="icon lock"><i class="fa-solid fa-unlock"></i></div>
                         <span class="name">Déverrouiller</span>
                     </div>
                     <div class="bureautique-item" data-tool="draw-pdf">
-                        <span class="new-badge">NEW</span>
                         <div class="icon edit"><i class="fa-solid fa-pen-nib"></i></div>
                         <span class="name">Dessiner</span>
                     </div>

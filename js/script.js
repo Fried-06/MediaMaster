@@ -832,56 +832,56 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
     // Old tools removed.
 
     // --- ANIMATION FLOCONS (Thème Noël) ---
-    const createSnowflakes = () => {
-        const snowflakesContainer = document.getElementById('snowflakes');
-        if (!snowflakesContainer) return;
+    // --- ANIMATION NEIGE SIMPLE ---
+    const createSimpleSnow = () => {
+        const container = document.getElementById('simple-snow-container');
+        if (!container) return;
         
-        const snowflakeSymbols = ['❄', '❅', '❆', '✻', '✼', '❉'];
-        const numberOfSnowflakes = 50;
-
-        for (let i = 0; i < numberOfSnowflakes; i++) {
-            const snowflake = document.createElement('div');
-            snowflake.classList.add('snowflake');
-            snowflake.textContent = snowflakeSymbols[Math.floor(Math.random() * snowflakeSymbols.length)];
-            snowflake.style.left = Math.random() * 100 + 'vw';
-            snowflake.style.animationDuration = (Math.random() * 3 + 5) + 's';
-            snowflake.style.animationDelay = Math.random() * 5 + 's';
-            snowflake.style.fontSize = (Math.random() * 15 + 10) + 'px';
-            snowflakesContainer.appendChild(snowflake);
+        container.innerHTML = '';
+        container.classList.remove('hidden');
+        const count = 50;
+        
+        for(let i=0; i<count; i++) {
+            const dot = document.createElement('div');
+            dot.classList.add('snow-dot');
+            const size = Math.random() * 3 + 2; // 2-5px
+            dot.style.width = `${size}px`;
+            dot.style.height = `${size}px`;
+            dot.style.left = `${Math.random() * 100}vw`;
+            dot.style.top = `-${Math.random() * 20}px`;
+            dot.style.animationDuration = `${Math.random() * 5 + 5}s`; // 5-10s
+            dot.style.animationDelay = `${Math.random() * 5}s`;
+            dot.style.opacity = Math.random();
+            container.appendChild(dot);
         }
     };
 
-    // Initialiser les flocons si thème Noël
+    // Gestion du thème pour la neige
     const initTheme = () => {
-        const savedTheme = localStorage.getItem('theme') || 'christmas';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-        if (themeSelect) themeSelect.value = savedTheme;
+        const savedTheme = localStorage.getItem('gemini3-theme') || 'cyber';
+        const container = document.getElementById('simple-snow-container');
         
-        // Show/hide snowflakes based on theme
-        const snowflakesContainer = document.getElementById('snowflakes');
-        if (snowflakesContainer) {
-            if (savedTheme === 'christmas') {
-                snowflakesContainer.style.display = 'block';
-            } else {
-                snowflakesContainer.style.display = 'none';
+        if (savedTheme === 'christmas') {
+            if(container) {
+                container.style.display = 'block';
+                if(container.children.length === 0) createSimpleSnow();
             }
+        } else {
+            if(container) container.style.display = 'none';
         }
     };
 
-    // Créer les flocons au chargement
-    createSnowflakes();
     initTheme();
 
-    // Mettre à jour le gestionnaire de thème pour basculer les flocons
     if (themeSelect) {
         themeSelect.addEventListener('change', (e) => {
             const theme = e.target.value;
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
-            
-            const snowflakesContainer = document.getElementById('snowflakes');
-            if (snowflakesContainer) {
-                snowflakesContainer.style.display = theme === 'christmas' ? 'block' : 'none';
+            const container = document.getElementById('simple-snow-container');
+            if (theme === 'christmas') {
+                container.style.display = 'block';
+                createSimpleSnow();
+            } else {
+                container.style.display = 'none';
             }
         });
     }
@@ -940,6 +940,18 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         if (toolKey === 'add-signature') {
             setupSignatureTool(config);
             return;
+        }
+        if (toolKey === 'add-watermark') {
+            setupWatermarkTool(config);
+            return;
+        }
+        if (toolKey === 'draw-pdf') {
+            setupDrawingTool(config); // Utiliser une fonction dédiée si nécessaire ou adapter setupSignatureTool
+            // Note: draw-pdf partage beaucoup avec signature, on peut avoir une fonction setupDrawingTool spécifique
+            // Pour l'instant on va assumer que draw-pdf a son propre setup si on l'extrait
+             // setupDrawingTool(config); -> On va créer cette fonction
+             setupDrawingTool(config);
+             return;
         }
         // Éditeur Visuel spécial pour 'edit-pdf'
         if (toolKey === 'edit-pdf') {
@@ -1282,131 +1294,426 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
     }
 
     function setupSignatureTool(config) {
-        const ui = toolContentArea.querySelector('#signature-editor-ui');
-        const pdfDrop = toolContentArea.querySelector('.pdf-drop');
-        const sigDrop = toolContentArea.querySelector('.sig-drop');
+        // --- Éléments UI Scopés ---
+        // Utiliser toolContentArea à la place du template global
+        const dropZone = toolContentArea.querySelector('#sig-pdf-drop');
         const pdfInput = toolContentArea.querySelector('.pdf-input');
-        const sigInput = toolContentArea.querySelector('.sig-input');
-        const canvas = toolContentArea.querySelector('#sig-canvas');
-        const ctx = canvas.getContext('2d');
-        const container = toolContentArea.querySelector('#sig-canvas-container');
-        const saveBtn = toolContentArea.querySelector('#save-signature-pdf');
-        const statusArea = toolContentArea.querySelector('.status-area');
-        const pageInput = toolContentArea.querySelector('.page-num');
-        let currentPdf = null;
-        let pdfFile = null;
-        let sigFile = null;
-        let scale = 1.0;
-        let sigEl = null;
+        const workspace = toolContentArea.querySelector('#signature-workspace');
+        
+        // Toolbar
+        const toolDraw = toolContentArea.querySelector('#tool-draw');
+        const toolImage = toolContentArea.querySelector('#tool-image');
+        const toolEraser = toolContentArea.querySelector('#tool-eraser');
+        const colorInput = toolContentArea.querySelector('#sig-color');
+        const widthInput = toolContentArea.querySelector('#sig-width');
+        const btnUndo = toolContentArea.querySelector('#sig-undo');
+        const btnClear = toolContentArea.querySelector('#sig-clear');
+        const imgUpload = toolContentArea.querySelector('#sig-image-upload');
+        
+        // Canvas & Navigation
+        const pdfCanvas = toolContentArea.querySelector('#pdf-render');
+        const sigCanvas = toolContentArea.querySelector('#signature-layer');
+        const btnPrev = toolContentArea.querySelector('#prev-page');
+        const btnNext = toolContentArea.querySelector('#next-page');
+        const pageSpan = toolContentArea.querySelector('#current-page-num');
+        const totalSpan = toolContentArea.querySelector('#total-pages');
+        const btnSave = toolContentArea.querySelector('#save-signed-pdf');
+        
+        // --- État global pour cette instance ---
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pdfScale = 1.0; 
+        let isDrawing = false;
+        let currentTool = 'draw'; 
+        let signatureData = {}; 
+        let currentPdfFile = null;
 
-        if (pdfDrop && pdfInput) pdfDrop.onclick = () => pdfInput.click();
-        if (sigDrop && sigInput) sigDrop.onclick = () => sigInput.click();
+        // --- 1. Chargement du PDF ---
+        const loadPDF = async (file) => {
+            currentPdfFile = file;
+            const arrayBuffer = await file.arrayBuffer();
+            const { getDocument } = window.pdfjsLib;
+            
+            try {
+                pdfDoc = await getDocument(arrayBuffer).promise;
+                totalSpan.textContent = pdfDoc.numPages;
+                pageNum = 1;
+                
+                dropZone.classList.add('hidden');
+                workspace.classList.remove('hidden');
+                
+                renderPage(pageNum);
+            } catch (err) {
+                console.error("Erreur chargement PDF:", err);
+                alert("Impossible de lire le PDF.");
+            }
+        };
 
-        if (pdfInput) {
-            pdfInput.onchange = async (e) => {
-                if (!e.target.files[0]) return;
-                pdfFile = e.target.files[0];
-                ui.classList.remove('hidden');
-                statusArea.classList.add('hidden');
-                const arrayBuffer = await pdfFile.arrayBuffer();
-                const loadingTask = pdfjsLib.getDocument(arrayBuffer);
-                currentPdf = await loadingTask.promise;
-                const pageNum = parseInt(pageInput?.value || 0) + 1;
-                const page = await currentPdf.getPage(pageNum);
-                const viewport = page.getViewport({ scale: 1.0 });
-                const containerWidth = toolContentArea.clientWidth - 40;
-                scale = containerWidth < viewport.width ? containerWidth / viewport.width : 1.0;
-                const scaledViewport = page.getViewport({ scale });
-                canvas.height = scaledViewport.height;
-                canvas.width = scaledViewport.width;
-                await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+        // --- 2. Rendu de la page ---
+        const renderPage = async (num) => {
+            saveCurrentSignature(); 
+            
+            pageSpan.textContent = num;
+            const page = await pdfDoc.getPage(num);
+            const containerWidth = toolContentArea.querySelector('#pdf-render-container').clientWidth - 40;
+            const viewport = page.getViewport({ scale: 1 });
+            pdfScale = containerWidth / viewport.width;
+            if (pdfScale > 1.5) pdfScale = 1.5;
+            
+            const scaledViewport = page.getViewport({ scale: pdfScale });
+
+            if(pdfCanvas) {
+                pdfCanvas.width = scaledViewport.width;
+                pdfCanvas.height = scaledViewport.height;
+            }
+            if(sigCanvas) {
+                sigCanvas.width = scaledViewport.width;
+                sigCanvas.height = scaledViewport.height;
+            }
+
+            const renderContext = {
+                canvasContext: pdfCanvas.getContext('2d'),
+                viewport: scaledViewport
             };
-        }
+            await page.render(renderContext).promise;
 
-        if (sigInput) {
-            sigInput.onchange = (e) => {
-                if (!e.target.files[0]) return;
-                sigFile = e.target.files[0];
-                const imgURL = URL.createObjectURL(sigFile);
-                if (sigEl) sigEl.remove();
-                sigEl = document.createElement('img');
-                sigEl.src = imgURL;
-                sigEl.style.position = 'absolute';
-                sigEl.style.left = '50px';
-                sigEl.style.top = '50px';
-                sigEl.style.width = '150px';
-                sigEl.style.height = 'auto';
-                sigEl.style.cursor = 'move';
-                sigEl.style.zIndex = '200';
-                container.appendChild(sigEl);
-                let isDragging = false, startX, startY, initialLeft, initialTop;
-                sigEl.addEventListener('mousedown', (ev) => {
-                    isDragging = true;
-                    startX = ev.clientX;
-                    startY = ev.clientY;
-                    initialLeft = sigEl.offsetLeft;
-                    initialTop = sigEl.offsetTop;
-                    sigEl.style.cursor = 'grabbing';
-                });
-                window.addEventListener('mousemove', (ev) => {
-                    if (!isDragging) return;
-                    const dx = ev.clientX - startX;
-                    const dy = ev.clientY - startY;
-                    sigEl.style.left = `${initialLeft + dx}px`;
-                    sigEl.style.top = `${initialTop + dy}px`;
-                });
-                window.addEventListener('mouseup', () => {
-                    isDragging = false;
-                    sigEl.style.cursor = 'move';
-                });
+            const ctx = sigCanvas.getContext('2d');
+            ctx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+            if (signatureData[num]) {
+                ctx.drawImage(signatureData[num], 0, 0);
+            }
+        };
+
+        // --- 3. Gestion du Dessin ---
+        if(sigCanvas) {
+            const ctx = sigCanvas.getContext('2d');
+            
+            const getTouchPos = (e) => {
+                const rect = sigCanvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
             };
-        }
 
-        if (saveBtn) {
-            saveBtn.onclick = async () => {
-                if (!pdfFile || !sigFile || !sigEl) {
-                    alert('Ajoutez un PDF et une signature');
-                    return;
+            const startDraw = (e) => {
+                e.preventDefault();
+                isDrawing = true;
+                const pos = getTouchPos(e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineWidth = widthInput.value;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                if (currentTool === 'eraser') {
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.lineWidth = widthInput.value * 5;
+                } else {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.strokeStyle = colorInput.value;
                 }
-                const originalHtml = saveBtn.innerHTML;
-                saveBtn.disabled = true;
-                saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';
-                const normX = sigEl.offsetLeft / canvas.width;
-                const normY = sigEl.offsetTop / canvas.height;
-                const normW = sigEl.clientWidth / canvas.width;
-                const normH = (sigEl.clientHeight || sigEl.clientWidth) / canvas.height;
-                const formData = new FormData();
-                formData.append('file', pdfFile);
-                formData.append('signature', sigFile);
-                formData.append('x', normX);
-                formData.append('y', normY);
-                formData.append('width', normW);
-                formData.append('height', normH);
-                formData.append('page', parseInt(pageInput?.value || 0));
+            };
+
+            const draw = (e) => {
+                if (!isDrawing) return;
+                e.preventDefault();
+                const pos = getTouchPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            };
+
+            const stopDraw = () => { isDrawing = false; };
+
+            sigCanvas.addEventListener('mousedown', startDraw);
+            sigCanvas.addEventListener('mousemove', draw);
+            sigCanvas.addEventListener('mouseup', stopDraw);
+            sigCanvas.addEventListener('mouseout', stopDraw);
+            sigCanvas.addEventListener('touchstart', startDraw);
+            sigCanvas.addEventListener('touchmove', draw);
+            sigCanvas.addEventListener('touchend', stopDraw);
+        }
+        
+        // --- 4. Outils Toolbar ---
+        const setActiveTool = (btn, mode) => {
+            toolContentArea.querySelectorAll('.tool-group .icon-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentTool = mode;
+            if(sigCanvas) sigCanvas.style.cursor = mode === 'eraser' ? 'not-allowed' : 'crosshair';
+        };
+
+        if(toolDraw) toolDraw.addEventListener('click', () => setActiveTool(toolDraw, 'draw'));
+        if(toolEraser) toolEraser.addEventListener('click', () => setActiveTool(toolEraser, 'eraser'));
+        
+        if(btnClear) btnClear.addEventListener('click', () => {
+             const ctx = sigCanvas.getContext('2d');
+             ctx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+        });
+
+        if(toolImage) toolImage.addEventListener('click', () => imgUpload.click());
+        if(imgUpload) imgUpload.addEventListener('change', (e) => {
+             const file = e.target.files[0];
+             if(file) {
+                 const img = new Image();
+                 img.onload = () => {
+                     const ratio = img.width / img.height;
+                     const w = Math.min(200, sigCanvas.width / 2);
+                     const h = w / ratio;
+                     const ctx = sigCanvas.getContext('2d');
+                     ctx.globalCompositeOperation = 'source-over';
+                     ctx.drawImage(img, (sigCanvas.width - w)/2, (sigCanvas.height - h)/2, w, h);
+                 };
+                 img.src = URL.createObjectURL(file);
+             }
+        });
+
+        // --- 5. Navigation ---
+        const saveCurrentSignature = () => {
+            if (!pdfDoc) return;
+            createImageBitmap(sigCanvas).then(bitmap => {
+                signatureData[pageNum] = bitmap;
+            });
+        };
+
+        if(btnPrev) btnPrev.addEventListener('click', () => {
+            if (pageNum <= 1) return;
+            pageNum--;
+            renderPage(pageNum);
+        });
+
+        if(btnNext) btnNext.addEventListener('click', () => {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            renderPage(pageNum);
+        });
+
+        // Gestion Drop & Input
+        if(dropZone && pdfInput) {
+            dropZone.addEventListener('click', () => pdfInput.click());
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; });
+            dropZone.addEventListener('dragleave', (e) => { dropZone.style.borderColor = 'var(--glass-border)'; });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files[0]) loadPDF(e.dataTransfer.files[0]);
+            });
+            pdfInput.addEventListener('change', (e) => { if(e.target.files[0]) loadPDF(e.target.files[0]); });
+        }
+
+        // --- 6. Sauvegarde Finale ---
+        if(btnSave) {
+            btnSave.addEventListener('click', async () => {
+                saveCurrentSignature();
+                const status = toolContentArea.querySelector('#sig-status');
+                status.classList.remove('hidden');
+                status.innerHTML = '<div class="loader"></div><p>Fusion des signatures...</p>';
+                
                 try {
-                    const resp = await fetch('/api/add-signature', { method: 'POST', body: formData });
-                    const data = await resp.json();
+                    const arrayBuffer = await currentPdfFile.arrayBuffer();
+                    const { PDFDocument } = PDFLib; 
+                    const pdf = await PDFDocument.load(arrayBuffer);
                     
-                    if (!resp.ok) throw new Error(data.error || 'Erreur serveur');
-                    
-                    if (data.task_id) {
-                        // Async task - start polling
-                        statusArea.classList.remove('hidden');
-                        pollToolStatus(data.task_id, statusArea, saveBtn, originalHtml);
-                    } else if (data.success) {
-                        // Direct response (shouldn't happen with new async backend)
-                        const msg = `Succès ! <a href="${data.download_url}" class="download-link" download>Télécharger le fichier</a>`;
-                        showStatus(statusArea, msg, 'success');
-                        saveBtn.disabled = false;
-                        saveBtn.innerHTML = originalHtml;
-                    } else {
-                        throw new Error(data.error || 'Erreur inconnue');
+                    for (const [pNum, bitmap] of Object.entries(signatureData)) {
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = bitmap.width;
+                        tempCanvas.height = bitmap.height;
+                        const tCtx = tempCanvas.getContext('2d');
+                        tCtx.drawImage(bitmap, 0, 0);
+                        const pngData = tempCanvas.toDataURL('image/png');
+                        
+                        const image = await pdf.embedPng(pngData);
+                        const page = pdf.getPage(parseInt(pNum) - 1);
+                        const { width, height } = page.getSize();
+                        
+                        page.drawImage(image, { x: 0, y: 0, width: width, height: height });
                     }
+                    
+                    const pdfBytes = await pdf.save();
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `signed_${currentPdfFile.name}`;
+                    link.click();
+                    
+                    status.innerHTML = '<i class="fa-solid fa-check" style="color: #00C851;"></i><p>Document signé téléchargé !</p>';
+                    setTimeout(() => status.classList.add('hidden'), 3000);
+
                 } catch (err) {
-                    showStatus(statusArea, `Erreur: ${err.message}`, 'error');
-                    saveBtn.disabled = false;
-                    saveBtn.innerHTML = originalHtml;
+                    console.error("Erreur Sauvegarde:", err);
+                    alert("Erreur lors de la sauvegarde du PDF.");
                 }
+            });
+        }
+    }
+
+    function setupDrawingTool(config) {
+        // Similaire à Signature mais avec Marqueur et config Annotations
+        const dropZone = toolContentArea.querySelector('#draw-pdf-drop');
+        const pdfInput = toolContentArea.querySelector('.pdf-input');
+        const workspace = toolContentArea.querySelector('#drawing-workspace');
+        
+        const toolPen = toolContentArea.querySelector('#draw-tool-pen');
+        const toolMarker = toolContentArea.querySelector('#draw-tool-marker');
+        const toolEraser = toolContentArea.querySelector('#draw-tool-eraser');
+        const colorInput = toolContentArea.querySelector('#draw-color');
+        const widthInput = toolContentArea.querySelector('#draw-width');
+        const btnUndo = toolContentArea.querySelector('#draw-undo');
+        const btnClear = toolContentArea.querySelector('#draw-clear');
+        
+        const pdfCanvas = toolContentArea.querySelector('#draw-pdf-render');
+        const drawCanvas = toolContentArea.querySelector('#draw-layer');
+        const btnPrev = toolContentArea.querySelector('#draw-prev-page');
+        const btnNext = toolContentArea.querySelector('#draw-next-page');
+        const pageSpan = toolContentArea.querySelector('#draw-page-num');
+        const totalSpan = toolContentArea.querySelector('#draw-total-pages');
+        const btnSave = toolContentArea.querySelector('#save-drawn-pdf');
+        
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pdfScale = 1.0; 
+        let isDrawing = false;
+        let currentTool = 'pen';
+        let drawingData = {};
+        let currentDrawFile = null;
+
+        const loadDrawPDF = async (file) => {
+            currentDrawFile = file;
+            const arrayBuffer = await file.arrayBuffer();
+            const { getDocument } = window.pdfjsLib;
+            try {
+                pdfDoc = await getDocument(arrayBuffer).promise;
+                totalSpan.textContent = pdfDoc.numPages;
+                pageNum = 1;
+                dropZone.classList.add('hidden');
+                workspace.classList.remove('hidden');
+                renderDrawPage(pageNum);
+            } catch (err) { alert("Impossible de lire le PDF."); }
+        };
+
+        const renderDrawPage = async (num) => {
+            saveCurrentDrawing();
+            pageSpan.textContent = num;
+            const page = await pdfDoc.getPage(num);
+            const containerWidth = toolContentArea.querySelector('#draw-render-container').clientWidth - 40;
+            const viewport = page.getViewport({ scale: 1 });
+            pdfScale = containerWidth / viewport.width;
+            if (pdfScale > 1.5) pdfScale = 1.5;
+            
+            const scaledViewport = page.getViewport({ scale: pdfScale });
+
+            if(pdfCanvas) { pdfCanvas.width = scaledViewport.width; pdfCanvas.height = scaledViewport.height; }
+            if(drawCanvas) { drawCanvas.width = scaledViewport.width; drawCanvas.height = scaledViewport.height; }
+
+            await page.render({ canvasContext: pdfCanvas.getContext('2d'), viewport: scaledViewport }).promise;
+
+            const ctx = drawCanvas.getContext('2d');
+            ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            if (drawingData[num]) ctx.drawImage(drawingData[num], 0, 0);
+        };
+
+        if(drawCanvas) {
+            const ctx = drawCanvas.getContext('2d');
+            const getDrawPos = (e) => {
+                const rect = drawCanvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            };
+            const startDrawing = (e) => {
+                e.preventDefault();
+                isDrawing = true;
+                const pos = getDrawPos(e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                if (currentTool === 'eraser') {
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.lineWidth = widthInput.value * 5;
+                    ctx.globalAlpha = 1.0;
+                } else if (currentTool === 'marker') {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.strokeStyle = colorInput.value;
+                    ctx.lineWidth = widthInput.value * 3;
+                    ctx.globalAlpha = 0.5;
+                } else {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.strokeStyle = colorInput.value;
+                    ctx.lineWidth = widthInput.value;
+                    ctx.globalAlpha = 1.0;
+                }
+            };
+            const drawing = (e) => {
+                if (!isDrawing) return;
+                e.preventDefault();
+                ctx.lineTo(getDrawPos(e).x, getDrawPos(e).y);
+                ctx.stroke();
+            };
+            const stopDrawing = () => isDrawing = false;
+            
+            drawCanvas.addEventListener('mousedown', startDrawing);
+            drawCanvas.addEventListener('mousemove', drawing);
+            drawCanvas.addEventListener('mouseup', stopDrawing);
+            drawCanvas.addEventListener('mouseout', stopDrawing);
+            drawCanvas.addEventListener('touchstart', startDrawing);
+            drawCanvas.addEventListener('touchmove', drawing);
+            drawCanvas.addEventListener('touchend', stopDrawing);
+        }
+
+        const setActiveDrawTool = (btn, mode) => {
+            toolContentArea.querySelectorAll('.tool-group .icon-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentTool = mode;
+        };
+
+        if(toolPen) toolPen.addEventListener('click', () => setActiveDrawTool(toolPen, 'pen'));
+        if(toolMarker) toolMarker.addEventListener('click', () => setActiveDrawTool(toolMarker, 'marker'));
+        if(toolEraser) toolEraser.addEventListener('click', () => setActiveDrawTool(toolEraser, 'eraser'));
+        if(btnClear) btnClear.addEventListener('click', () => {
+            const ctx = drawCanvas.getContext('2d');
+            ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        });
+
+        const saveCurrentDrawing = () => {
+             if (!pdfDoc) return;
+             createImageBitmap(drawCanvas).then(bitmap => drawingData[pageNum] = bitmap);
+        };
+
+        if(btnPrev) btnPrev.addEventListener('click', () => { if (pageNum > 1) { pageNum--; renderDrawPage(pageNum); } });
+        if(btnNext) btnNext.addEventListener('click', () => { if (pageNum < pdfDoc.numPages) { pageNum++; renderDrawPage(pageNum); } });
+
+        if(dropZone && pdfInput) {
+            dropZone.onclick = () => pdfInput.click();
+            pdfInput.onchange = (e) => { if(e.target.files[0]) loadDrawPDF(e.target.files[0]); };
+            dropZone.ondragover = (e) => { e.preventDefault(); };
+            dropZone.ondrop = (e) => { e.preventDefault(); if(e.dataTransfer.files[0]) loadDrawPDF(e.dataTransfer.files[0]); };
+        }
+
+        if(btnSave) {
+            btnSave.onclick = async () => {
+                saveCurrentDrawing();
+                const status = toolContentArea.querySelector('#draw-status');
+                status.classList.remove('hidden');
+                status.innerHTML = '<div class="loader"></div><p>Fusion du dessin...</p>';
+                try {
+                    const arrayBuffer = await currentDrawFile.arrayBuffer();
+                    const { PDFDocument } = PDFLib;
+                    const pdf = await PDFDocument.load(arrayBuffer);
+                    for (const [pNum, bitmap] of Object.entries(drawingData)) {
+                         const tempCanvas = document.createElement('canvas');
+                         tempCanvas.width = bitmap.width; tempCanvas.height = bitmap.height;
+                         tempCanvas.getContext('2d').drawImage(bitmap, 0, 0);
+                         const img = await pdf.embedPng(tempCanvas.toDataURL('image/png'));
+                         const page = pdf.getPage(parseInt(pNum) - 1);
+                         page.drawImage(img, { x: 0, y: 0, width: page.getSize().width, height: page.getSize().height });
+                    }
+                    const pdfBytes = await pdf.save();
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `drawn_${currentDrawFile.name}`;
+                    link.click();
+                    status.innerHTML = '<i class="fa-solid fa-check"></i> Succès';
+                    setTimeout(() => status.classList.add('hidden'), 3000);
+                } catch(e) { alert("Erreur sauvegarde: " + e.message); }
             };
         }
     }
@@ -1585,6 +1892,15 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
     if (generateQrBtn) {
         generateQrBtn.addEventListener('click', generateQRCode);
     }
+    
+    // Reset QR
+    const resetQrBtn = document.getElementById('reset-qr-btn');
+    if (resetQrBtn) {
+        resetQrBtn.addEventListener('click', () => {
+             qrData.value = '';
+             qrCanvasContainer.innerHTML = '';
+        });
+    }
 
     if (downloadQrPdfBtn) {
         downloadQrPdfBtn.addEventListener('click', () => {
@@ -1644,6 +1960,58 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         return Math.min(100, strength);
     };
 
+    const estimateCrackTime = (password) => {
+        // Estimation très basique pour l'exemple
+        const poolSize = 94; // approx chars ASCII
+        const combinations = Math.pow(poolSize, password.length);
+        const speed = 1e9; // 1 milliard essais/sec
+        const seconds = combinations / speed;
+        
+        if (seconds < 1) return "Instantané";
+        if (seconds < 60) return `${Math.round(seconds)} secondes`;
+        if (seconds < 3600) return `${Math.round(seconds/60)} minutes`;
+        if (seconds < 86400) return `${Math.round(seconds/3600)} heures`;
+        if (seconds < 31536000) return `${Math.round(seconds/86400)} jours`;
+        if (seconds < 3153600000) return `${Math.round(seconds/31536000)} années`;
+        return "Des siècles";
+    };
+
+    const updateTestUI = (password) => {
+        const bar = document.getElementById('test-strength-bar');
+        const text = document.getElementById('test-strength-text');
+        const timeText = document.getElementById('test-crack-time');
+        
+        if (!bar) return;
+
+        if (!password) {
+            bar.style.width = '0%';
+            text.textContent = 'Force: 0%';
+            timeText.textContent = 'Temps de crack: ...';
+            return;
+        }
+
+        const strength = calculateStrength(password);
+        const time = estimateCrackTime(password);
+        
+        bar.style.width = `${strength}%`;
+        text.textContent = `Force: ${strength}%`;
+        timeText.textContent = `Temps de crack: ${time}`;
+
+        if (strength < 40) {
+            bar.style.background = '#ff4444';
+        } else if (strength < 70) {
+            bar.style.background = '#ffbb33';
+        } else {
+            bar.style.background = '#00C851';
+        }
+    };
+
+    const testPassInput = document.getElementById('test-password-input');
+    if (testPassInput) {
+        testPassInput.addEventListener('input', (e) => updateTestUI(e.target.value));
+    }
+
+
     const updateStrengthMeter = (password) => {
         const strength = calculateStrength(password);
         if (strengthBar) {
@@ -1702,7 +2070,30 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         
         passResult.value = password;
         updateStrengthMeter(password);
+        // Aussi mettre à jour le testeur si on veut que l'utilisateur voit direct la force de ce qu'il a généré (optionnel)
+        // Mais le testeur est un input à part. On pourrait copier le mot de passe généré dans le testeur pour démo.
+        const testInput = document.getElementById('test-password-input');
+        if(testInput) {
+            testInput.value = password;
+            updateTestUI(password);
+        }
     };
+    
+    // Reset Password
+    const resetPassBtn = document.getElementById('reset-pass-btn');
+    if (resetPassBtn) {
+        resetPassBtn.addEventListener('click', () => {
+            passResult.value = '';
+            const testInput = document.getElementById('test-password-input');
+            if(testInput) {
+                testInput.value = '';
+                updateTestUI('');
+            }
+            if(strengthBar) strengthBar.style.width = '0%';
+            document.getElementById('pass-length').value = 16;
+            document.getElementById('pass-length-val').textContent = '16';
+        });
+    }
 
     // Génération du mot de passe
     if (generatePassBtn) {
@@ -1861,26 +2252,29 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         });
     }
 
-    // === OUTIL FILIGRANE AVANCÉ ===
-    const wmContainer = document.getElementById('tpl-add-watermark');
-    if (wmContainer) {
-        // --- Éléments du DOM ---
-        const wmText = wmContainer.querySelector('.watermark-text');
-        const wmColor = wmContainer.querySelector('.watermark-color');
-        const wmFont = wmContainer.querySelector('.watermark-font');
-        const wmSize = wmContainer.querySelector('.watermark-size');
-        const wmOpacity = wmContainer.querySelector('.watermark-opacity');
-        const wmAngle = wmContainer.querySelector('.watermark-angle');
-        const wmCount = wmContainer.querySelector('.watermark-count');
+    // === OUTIL FILIGRANE (Refactorisé) ===
+    function setupWatermarkTool(config) {
+        // Sélecteurs scopés dans toolContentArea
+        const wmText = toolContentArea.querySelector('.watermark-text');
+        const wmColor = toolContentArea.querySelector('.watermark-color');
+        const wmFont = toolContentArea.querySelector('.watermark-font');
+        const wmSize = toolContentArea.querySelector('.watermark-size');
+        const wmOpacity = toolContentArea.querySelector('.watermark-opacity');
+        const wmAngle = toolContentArea.querySelector('.watermark-angle');
+        const wmCount = toolContentArea.querySelector('.watermark-count');
         
-        const previewEl = document.getElementById('watermark-preview');
-        const previewText = previewEl.querySelector('.preview-watermark');
-        const applyBtn = wmContainer.querySelector('.process-btn');
-        const pdfInput = wmContainer.querySelector('input[type="file"]');
-        const statusArea = wmContainer.querySelector('.status-area');
+        const previewText = toolContentArea.querySelector('.preview-watermark');
+        const applyBtn = toolContentArea.querySelector('.process-btn');
+        const pdfInput = toolContentArea.querySelector('input[type="file"]');
+        const statusArea = toolContentArea.querySelector('.status-area');
+        const dropZone = toolContentArea.querySelector('.drop-zone');
 
-        // --- Mise à jour de l'aperçu en temps réel ---
+        // Gestion Drop PDF
+        if(dropZone && pdfInput) setupDropZoneLogic(dropZone, pdfInput);
+
+        // Update Preview
         const updatePreview = () => {
+            if(!previewText) return;
             const text = wmText.value || 'CONFIDENTIEL';
             const color = wmColor.value;
             const font = wmFont.value;
@@ -1888,13 +2282,11 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
             const opacity = wmOpacity.value / 100;
             const angle = wmAngle.value;
             
-            // Mise à jour des valeurs affichées
-            wmContainer.querySelector('.watermark-size-val').textContent = size;
-            wmContainer.querySelector('.watermark-opacity-val').textContent = wmOpacity.value;
-            wmContainer.querySelector('.watermark-angle-val').textContent = angle;
-            wmContainer.querySelector('.watermark-count-val').textContent = wmCount.value;
+            toolContentArea.querySelector('.watermark-size-val').textContent = size;
+            toolContentArea.querySelector('.watermark-opacity-val').textContent = wmOpacity.value;
+            toolContentArea.querySelector('.watermark-angle-val').textContent = angle;
+            toolContentArea.querySelector('.watermark-count-val').textContent = wmCount.value;
 
-            // Application du style CSS sur l'élément d'aperçu
             previewText.textContent = text;
             previewText.style.color = color;
             previewText.style.fontFamily = font;
@@ -1903,114 +2295,113 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
             previewText.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
         };
 
-        // Écouteurs d'événements pour tous les inputs
         [wmText, wmColor, wmFont, wmSize, wmOpacity, wmAngle, wmCount].forEach(input => {
-            input.addEventListener('input', updatePreview);
+            if(input) input.addEventListener('input', updatePreview);
         });
 
-        // --- Application du filigrane sur le PDF (pdf-lib) ---
-        applyBtn.addEventListener('click', async () => {
-            const file = pdfInput.files[0];
-            if (!file) {
-                alert('Veuillez sélectionner un fichier PDF.');
-                return;
-            }
+        // Apply Logic (pdf-lib)
+         if(applyBtn) {
+            applyBtn.addEventListener('click', async () => {
+                const file = pdfInput.files[0];
+                if (!file) {
+                    alert('Veuillez sélectionner un fichier PDF.');
+                    return;
+                }
 
-            statusArea.classList.remove('hidden');
-            statusArea.innerHTML = '<div class="loader"></div><p>Traitement du PDF en cours...</p>';
+                statusArea.classList.remove('hidden');
+                statusArea.innerHTML = '<div class="loader"></div><p>Traitement du PDF en cours...</p>';
 
-            try {
-                // Lecture du fichier
-                const arrayBuffer = await file.arrayBuffer();
-                
-                // Chargement dans pdf-lib
-                const { PDFDocument, rgb, degrees, StandardFonts } = PDFLib;
-                const pdfDoc = await PDFDocument.load(arrayBuffer);
-                const pages = pdfDoc.getPages();
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const { PDFDocument, rgb, degrees, StandardFonts } = PDFLib;
+                    const pdfDoc = await PDFDocument.load(arrayBuffer);
+                    const pages = pdfDoc.getPages();
 
-                // Préparation des paramètres
-                const text = wmText.value || 'CONFIDENTIEL';
-                const size = parseInt(wmSize.value);
-                const opacity = parseInt(wmOpacity.value) / 100;
-                const angle = parseInt(wmAngle.value);
-                const count = parseInt(wmCount.value); // Nombre de répétitions
-                
-                // Conversion couleur Hex -> RGB (pdf-lib utilise 0-1)
-                const hexToRgb = (hex) => {
-                    const r = parseInt(hex.slice(1, 3), 16) / 255;
-                    const g = parseInt(hex.slice(3, 5), 16) / 255;
-                    const b = parseInt(hex.slice(5, 7), 16) / 255;
-                    return rgb(r, g, b);
-                };
-                const colorRgb = hexToRgb(wmColor.value);
-
-                // Sélection de la police standard (pdf-lib supporte standard fonts facilement)
-                // Pour simplifier, on mappe les choix sur Helvetica/Times/Courier
-                let fontEmbed;
-                const fontVal = wmFont.value;
-                if (fontVal.includes('Times')) fontEmbed = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-                else if (fontVal.includes('Courier')) fontEmbed = await pdfDoc.embedFont(StandardFonts.Courier);
-                else fontEmbed = await pdfDoc.embedFont(StandardFonts.HelveticaBold); // Impact/Arial mapping
-
-                // Boucle sur chaque page
-                for (const page of pages) {
-                    const { width, height } = page.getSize();
+                    const text = wmText.value || 'CONFIDENTIEL';
+                    const size = parseInt(wmSize.value);
+                    const opacity = parseInt(wmOpacity.value) / 100;
+                    const angle = parseInt(wmAngle.value);
+                    const count = parseInt(wmCount.value);
                     
-                    if (count === 1) {
-                        // Cas simple : 1 filigrane au centre
-                        page.drawText(text, {
-                            x: width / 2 - (size * text.length / 4), // centrage approximatif
-                            y: height / 2,
-                            size: size,
-                            font: fontEmbed,
-                            color: colorRgb,
-                            opacity: opacity,
-                            rotate: degrees(angle),
-                        });
-                    } else {
-                        // Cas multiple : Grille de filigranes
-                        // On crée une grille simple
-                        const rows = Math.ceil(Math.sqrt(count));
-                        const cols = Math.ceil(count / rows);
-                        const xStep = width / cols;
-                        const yStep = height / rows;
+                    const hexToRgb = (hex) => {
+                        const r = parseInt(hex.slice(1, 3), 16) / 255;
+                        const g = parseInt(hex.slice(3, 5), 16) / 255;
+                        const b = parseInt(hex.slice(5, 7), 16) / 255;
+                        return rgb(r, g, b);
+                    };
+                    const colorRgb = hexToRgb(wmColor.value);
 
-                        for (let i = 0; i < cols; i++) {
-                            for (let j = 0; j < rows; j++) {
-                                // Ajout d'un offset pour éviter que ce soit trop régulier
-                                const x = (i * xStep) + (xStep / 2) - 50; 
-                                const y = (j * yStep) + (yStep / 2);
-                                
-                                page.drawText(text, {
-                                    x: x,
-                                    y: y,
-                                    size: size,
-                                    font: fontEmbed,
-                                    color: colorRgb,
-                                    opacity: opacity,
-                                    rotate: degrees(angle),
-                                });
+                    let fontEmbed;
+                    const fontVal = wmFont.value;
+                    if (fontVal.includes('Times')) fontEmbed = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+                    else if (fontVal.includes('Courier')) fontEmbed = await pdfDoc.embedFont(StandardFonts.Courier);
+                    else fontEmbed = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+                    for (const page of pages) {
+                        const { width, height } = page.getSize();
+                        
+                        if (count === 1) {
+                            page.drawText(text, {
+                                x: width / 2 - (size * text.length / 4),
+                                y: height / 2,
+                                size: size,
+                                font: fontEmbed,
+                                color: colorRgb,
+                                opacity: opacity,
+                                rotate: degrees(angle),
+                            });
+                        } else {
+                            const rows = Math.ceil(Math.sqrt(count));
+                            const cols = Math.ceil(count / rows);
+                            const xStep = width / cols;
+                            const yStep = height / rows;
+
+                            for (let i = 0; i < cols; i++) {
+                                for (let j = 0; j < rows; j++) {
+                                    const x = (i * xStep) + (xStep / 2) - 50; 
+                                    const y = (j * yStep) + (yStep / 2);
+                                    
+                                    page.drawText(text, {
+                                        x: x,
+                                        y: y,
+                                        size: size,
+                                        font: fontEmbed,
+                                        color: colorRgb,
+                                        opacity: opacity,
+                                        rotate: degrees(angle),
+                                    });
+                                }
                             }
                         }
                     }
+
+                    const pdfBytes = await pdfDoc.save();
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `watermarked_${file.name}`;
+                    link.click();
+
+                    statusArea.innerHTML = '<i class="fa-solid fa-check" style="color: #00C851;"></i><p>Filigrane ajouté avec succès !</p>';
+                    setTimeout(() => statusArea.classList.add('hidden'), 3000);
+
+                } catch (err) {
+                    console.error("Erreur PDF:", err);
+                    statusArea.innerHTML = `<i class="fa-solid fa-times" style="color: #ff4444;"></i><p>Erreur: ${err.message}</p>`;
                 }
-
-                // Sauvegarde et téléchargement
-                const pdfBytes = await pdfDoc.save();
-                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `watermarked_${file.name}`;
-                link.click();
-
-                statusArea.innerHTML = '<i class="fa-solid fa-check" style="color: #00C851;"></i><p>Filigrane ajouté avec succès !</p>';
-                setTimeout(() => statusArea.classList.add('hidden'), 3000);
-
-            } catch (err) {
-                console.error("Erreur PDF:", err);
-                statusArea.innerHTML = `<i class="fa-solid fa-times" style="color: #ff4444;"></i><p>Erreur: ${err.message}</p>`;
-            }
-        });
+            });
+         }
+         
+         // Helper for dropzone
+         function setupDropZoneLogic(drop, input) {
+             drop.onclick = () => input.click();
+             input.onchange = () => {
+                 if(input.files[0]) {
+                     drop.querySelector('p').textContent = input.files[0].name;
+                     drop.style.borderColor = 'var(--primary)';
+                 }
+             };
+         }
     }
 
     // === OUTIL SIGNATURE INTERACTIVE ===

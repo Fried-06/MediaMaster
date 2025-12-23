@@ -2013,5 +2013,275 @@ const pollToolStatus = (taskId, statusElement, buttonElement, originalButtonHtml
         });
     }
 
+    // === OUTIL SIGNATURE INTERACTIVE ===
+    const sigContainer = document.getElementById('tpl-add-signature');
+    if (sigContainer) {
+        // --- Éléments UI ---
+        const dropZone = sigContainer.querySelector('#sig-pdf-drop');
+        const pdfInput = sigContainer.querySelector('.pdf-input');
+        const workspace = sigContainer.querySelector('#signature-workspace');
+        
+        // Toolbar
+        const toolDraw = document.getElementById('tool-draw');
+        const toolImage = document.getElementById('tool-image');
+        const toolEraser = document.getElementById('tool-eraser');
+        const colorInput = document.getElementById('sig-color');
+        const widthInput = document.getElementById('sig-width');
+        const btnUndo = document.getElementById('sig-undo');
+        const btnClear = document.getElementById('sig-clear');
+        const imgUpload = document.getElementById('sig-image-upload');
+        
+        // Canvas & Navigation
+        const pdfCanvas = document.getElementById('pdf-render');
+        const sigCanvas = document.getElementById('signature-layer');
+        const btnPrev = document.getElementById('prev-page');
+        const btnNext = document.getElementById('next-page');
+        const pageSpan = document.getElementById('current-page-num');
+        const totalSpan = document.getElementById('total-pages');
+        const btnSave = document.getElementById('save-signed-pdf');
+        
+        // --- État global ---
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pdfScale = 1.0; 
+        let isDrawing = false;
+        let currentTool = 'draw'; // 'draw' ou 'eraser'
+        let signatureData = {}; // Stocke les dessins par numéro de page: { 1: ImageBitmap, 2: ... }
+        let currentPdfFile = null;
+
+        // --- 1. Chargement du PDF ---
+        const loadPDF = async (file) => {
+            currentPdfFile = file;
+            const arrayBuffer = await file.arrayBuffer();
+            const { getDocument } = window.pdfjsLib;
+            
+            try {
+                pdfDoc = await getDocument(arrayBuffer).promise;
+                totalSpan.textContent = pdfDoc.numPages;
+                pageNum = 1;
+                
+                // Afficher l'interface
+                dropZone.classList.add('hidden');
+                workspace.classList.remove('hidden');
+                
+                renderPage(pageNum);
+            } catch (err) {
+                console.error("Erreur chargement PDF:", err);
+                alert("Impossible de lire le PDF.");
+            }
+        };
+
+        // --- 2. Rendu de la page (PDF + Canvas Signature) ---
+        const renderPage = async (num) => {
+            saveCurrentSignature(); // Sauvegarder la page actuelle avant de changer
+            
+            pageSpan.textContent = num;
+            const page = await pdfDoc.getPage(num);
+            
+            // Calculer l'échelle pour adapter à la largeur
+            const containerWidth = document.getElementById('pdf-render-container').clientWidth - 40;
+            const viewport = page.getViewport({ scale: 1 });
+            pdfScale = containerWidth / viewport.width;
+            if (pdfScale > 1.5) pdfScale = 1.5; // Limiter le zoom
+            
+            const scaledViewport = page.getViewport({ scale: pdfScale });
+
+            // Redimensionner les canvas
+            pdfCanvas.width = scaledViewport.width;
+            pdfCanvas.height = scaledViewport.height;
+            sigCanvas.width = scaledViewport.width;
+            sigCanvas.height = scaledViewport.height;
+
+            // Rendu PDF
+            const renderContext = {
+                canvasContext: pdfCanvas.getContext('2d'),
+                viewport: scaledViewport
+            };
+            await page.render(renderContext).promise;
+
+            // Restaurer la signature de cette page si elle existe
+            const ctx = sigCanvas.getContext('2d');
+            ctx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+            if (signatureData[num]) {
+                ctx.drawImage(signatureData[num], 0, 0);
+            }
+        };
+
+        // --- 3. Gestion du Dessin ---
+        const ctx = sigCanvas.getContext('2d');
+        
+        const getTouchPos = (e) => {
+            const rect = sigCanvas.getBoundingClientRect();
+            // Gestion Touch vs Mouse
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        };
+
+        const startDraw = (e) => {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getTouchPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            
+            ctx.lineWidth = widthInput.value;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            if (currentTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = widthInput.value * 5; // Gomme plus grosse
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = colorInput.value;
+            }
+        };
+
+        const draw = (e) => {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getTouchPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        };
+
+        const stopDraw = () => {
+            isDrawing = false;
+        };
+
+        // Événements Souris
+        sigCanvas.addEventListener('mousedown', startDraw);
+        sigCanvas.addEventListener('mousemove', draw);
+        sigCanvas.addEventListener('mouseup', stopDraw);
+        sigCanvas.addEventListener('mouseout', stopDraw);
+
+        // Événements Tactiles
+        sigCanvas.addEventListener('touchstart', startDraw);
+        sigCanvas.addEventListener('touchmove', draw);
+        sigCanvas.addEventListener('touchend', stopDraw);
+        
+        // --- 4. Outils Toolbar ---
+        const setActiveTool = (btn, mode) => {
+            document.querySelectorAll('.tool-group .icon-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentTool = mode;
+            sigCanvas.style.cursor = mode === 'eraser' ? 'not-allowed' : 'crosshair';
+        };
+
+        toolDraw.addEventListener('click', () => setActiveTool(toolDraw, 'draw'));
+        toolEraser.addEventListener('click', () => setActiveTool(toolEraser, 'eraser'));
+        
+        btnClear.addEventListener('click', () => {
+             ctx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+        });
+
+        // Import Image Signature
+        toolImage.addEventListener('click', () => imgUpload.click());
+        imgUpload.addEventListener('change', (e) => {
+             const file = e.target.files[0];
+             if(file) {
+                 const img = new Image();
+                 img.onload = () => {
+                     // Dessiner l'image au centre (max 200px large)
+                     const ratio = img.width / img.height;
+                     const w = Math.min(200, sigCanvas.width / 2);
+                     const h = w / ratio;
+                     ctx.globalCompositeOperation = 'source-over';
+                     ctx.drawImage(img, (sigCanvas.width - w)/2, (sigCanvas.height - h)/2, w, h);
+                 };
+                 img.src = URL.createObjectURL(file);
+             }
+        });
+
+        // --- 5. Navigation ---
+        const saveCurrentSignature = () => {
+            if (!pdfDoc) return;
+            // Stocker le contenu actuel du canvas dans une image bitmap
+            createImageBitmap(sigCanvas).then(bitmap => {
+                signatureData[pageNum] = bitmap;
+            });
+        };
+
+        btnPrev.addEventListener('click', () => {
+            if (pageNum <= 1) return;
+            pageNum--;
+            renderPage(pageNum);
+        });
+
+        btnNext.addEventListener('click', () => {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            renderPage(pageNum);
+        });
+
+        // Gestion Drop & Input
+        dropZone.addEventListener('click', () => pdfInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; });
+        dropZone.addEventListener('dragleave', (e) => { dropZone.style.borderColor = 'var(--glass-border)'; });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files[0]) loadPDF(e.dataTransfer.files[0]);
+        });
+        pdfInput.addEventListener('change', (e) => { if(e.target.files[0]) loadPDF(e.target.files[0]); });
+
+
+        // --- 6. Sauvegarde Finale (Fusion PDF + Signature) ---
+        btnSave.addEventListener('click', async () => {
+            saveCurrentSignature(); // Sauvegarder la dernière page
+            const status = document.getElementById('sig-status');
+            status.classList.remove('hidden');
+            status.innerHTML = '<div class="loader"></div><p>Fusion des signatures...</p>';
+            
+            try {
+                const arrayBuffer = await currentPdfFile.arrayBuffer();
+                const { PDFDocument } = PDFLib; 
+                const pdf = await PDFDocument.load(arrayBuffer);
+                
+                // Pour chaque page ayant une signature
+                for (const [pNum, bitmap] of Object.entries(signatureData)) {
+                    // Convertir le bitmap en PNG base64 via un canvas temporaire
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = bitmap.width;
+                    tempCanvas.height = bitmap.height;
+                    const tCtx = tempCanvas.getContext('2d');
+                    tCtx.drawImage(bitmap, 0, 0);
+                    const pngData = tempCanvas.toDataURL('image/png');
+                    
+                    // Intégrer dans le PDF
+                    const image = await pdf.embedPng(pngData);
+                    const page = pdf.getPage(parseInt(pNum) - 1); // 0-indexed
+                    const { width, height } = page.getSize();
+                    
+                    page.drawImage(image, {
+                        x: 0,
+                        y: 0,
+                        width: width,
+                        height: height
+                    });
+                }
+                
+                // Télécharger
+                const pdfBytes = await pdf.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `signed_${currentPdfFile.name}`;
+                link.click();
+                
+                status.innerHTML = '<i class="fa-solid fa-check" style="color: #00C851;"></i><p>Document signé téléchargé !</p>';
+                setTimeout(() => status.classList.add('hidden'), 3000);
+
+            } catch (err) {
+                console.error("Erreur Sauvegarde:", err);
+                alert("Erreur lors de la sauvegarde du PDF.");
+            }
+        });
+
+    }
+
 }); // End DOMContentLoaded
 

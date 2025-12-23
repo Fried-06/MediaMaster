@@ -804,30 +804,64 @@
                 <div class="status-area hidden"></div>
             </div>
 
-            <!-- Add Signature -->
+            <!-- Add Signature (Interface Interactive) -->
             <div id="tpl-add-signature">
-                <div class="drop-zone pdf-drop">
+                <!-- Zone de dépôt initiale -->
+                <div class="drop-zone pdf-drop" id="sig-pdf-drop">
                     <i class="fa-solid fa-file-contract"></i>
-                    <p>1. Glissez votre PDF ici</p>
+                    <p>Glissez votre PDF à signer ici</p>
                     <input type="file" accept=".pdf" hidden class="pdf-input">
                 </div>
-                <div class="drop-zone sig-drop" style="margin-top: 15px; border-color: var(--secondary);">
-                    <i class="fa-solid fa-signature"></i>
-                    <p>2. Glissez l'image de votre signature (PNG transparent)</p>
-                    <input type="file" accept="image/*" hidden class="sig-input">
-                </div>
-                <div id="signature-editor-ui" class="hidden" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
-                    <div class="visual-toolbar" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px;">
-                        <button class="action-btn" id="save-signature-pdf" style="padding: 5px 20px; width: auto; font-size: 0.9rem;">
-                             <i class="fa-solid fa-floppy-disk"></i> Sauvegarder
-                        </button>
+
+                <!-- Espace de travail de signature (Masqué initialement) -->
+                <div id="signature-workspace" class="hidden" style="margin-top: 20px;">
+                    <!-- Barre d'outils de signature -->
+                    <div class="toolbar glass-panel" style="padding: 10px; margin-bottom: 15px; display: flex; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                        <div class="tool-group">
+                            <button class="icon-btn active" id="tool-draw" title="Dessiner"><i class="fa-solid fa-pen"></i></button>
+                            <button class="icon-btn" id="tool-image" title="Importer Signature"><i class="fa-solid fa-image"></i></button>
+                            <input type="file" id="sig-image-upload" accept="image/*" hidden>
+                            <button class="icon-btn" id="tool-eraser" title="Gomme"><i class="fa-solid fa-eraser"></i></button>
+                        </div>
+                        
+                        <div class="divider" style="width: 1px; height: 30px; background: rgba(255,255,255,0.2);"></div>
+                        
+                        <div class="tool-group">
+                            <input type="color" id="sig-color" value="#000000" title="Couleur">
+                            <input type="range" id="sig-width" min="1" max="10" value="2" title="Épaisseur" style="width: 80px;">
+                        </div>
+
+                        <div class="divider" style="width: 1px; height: 30px; background: rgba(255,255,255,0.2);"></div>
+
+                        <div class="tool-group">
+                            <button class="icon-btn" id="sig-undo" title="Annuler"><i class="fa-solid fa-rotate-left"></i></button>
+                            <button class="icon-btn" id="sig-clear" title="Tout effacer"><i class="fa-solid fa-trash"></i></button>
+                        </div>
                     </div>
-                    <div id="sig-canvas-container" style="position: relative; border: 1px solid var(--glass-border); box-shadow: 0 4px 15px rgba(0,0,0,0.3); overflow: hidden; max-width: 100%;">
-                        <canvas id="sig-canvas"></canvas>
+
+                    <!-- Conteneur PDF + Canvas de signature -->
+                    <div id="pdf-render-container" style="position: relative; border: 1px solid var(--glass-border); background: #525659; overflow: auto; max-height: 70vh; display: flex; justify-content: center; padding: 20px;">
+                        <div id="pdf-page-wrapper" style="position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+                            <canvas id="pdf-render"></canvas>
+                            <canvas id="signature-layer" style="position: absolute; top: 0; left: 0; cursor: crosshair;"></canvas>
+                        </div>
                     </div>
+
+                    <!-- Navigation Pages -->
+                    <div class="pdf-controls glass-panel" style="margin-top: 15px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <button class="action-btn small" id="prev-page"><i class="fa-solid fa-chevron-left"></i> Précédent</button>
+                        <span style="color: white; font-weight: 500;">Page <span id="current-page-num">1</span> / <span id="total-pages">1</span></span>
+                        <button class="action-btn small" id="next-page">Suivant <i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+
+                    <!-- Bouton Sauvegarder -->
+                    <button id="save-signed-pdf" class="action-btn process-btn" style="margin-top: 20px; width: 100%;">
+                        <span>Sauvegarder et Télécharger</span> <i class="fa-solid fa-file-export"></i>
+                    </button>
                 </div>
-                <div class="options-grid">
-                    <div class="input-group">
+                
+                <div class="status-area hidden" id="sig-status"></div>
+            </div>
                         <label>Page # (0 = 1ère page)</label>
                         <input type="number" value="0" class="page-num">
                     </div>
@@ -957,9 +991,6 @@
                     </div>
                     <div class="input-group">
                         <label>Position Y</label>
-                        <input type="number" value="100" class="pos-y">
-                    </div>
-                </div>
                 <button class="action-btn process-btn">
                     <span>Ajouter Dessin</span> <i class="fa-solid fa-pen-nib"></i>
                 </button>

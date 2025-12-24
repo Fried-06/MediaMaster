@@ -1110,9 +1110,19 @@ def handle_reviews():
     if request.method == 'GET':
         try:
             if os.path.exists(REVIEWS_FILE):
-                with open(REVIEWS_FILE, 'r') as f:
-                    reviews = json.load(f)
-                    return jsonify(reviews)
+                reviews = []
+                try:
+                    with open(REVIEWS_FILE, 'r', encoding='utf-8') as f:
+                        reviews = json.load(f)
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    try:
+                        with open(REVIEWS_FILE, 'r', encoding='utf-16') as f:
+                            reviews = json.load(f)
+                        with open(REVIEWS_FILE, 'w', encoding='utf-8') as fw:
+                            json.dump(reviews, fw, indent=2, ensure_ascii=False)
+                    except Exception:
+                        reviews = []
+                return jsonify(reviews)
             return jsonify([])
         except Exception as e:
             return jsonify({'error': str(e)}), 500
@@ -1302,6 +1312,24 @@ def unlock_pdf():
     threading.Thread(target=tool_worker_wrapper, args=(task_id, unlock_pdf_task, input_path, output_filename, password)).start()
     return jsonify({'success': True, 'task_id': task_id})
 
+@app.route('/api/whatsapp-status-zip', methods=['POST'])
+def whatsapp_status_zip():
+    files = request.files.getlist('files[]')
+    if not files:
+        return jsonify({'error': 'No files provided'}), 400
+    task_id = str(uuid.uuid4())
+    input_paths = []
+    for idx, f in enumerate(files):
+        fname = f.filename or f"status_{idx}"
+        safe_name = re.sub(r'[^A-Za-z0-9._-]', '_', fname)
+        path = os.path.join(DOWNLOAD_FOLDER, f"{task_id}_{idx}_{safe_name}")
+        f.save(path)
+        input_paths.append(path)
+    output_filename = f"{task_id}_wa_status.zip"
+    downloads[task_id] = {'status': 'pending', 'progress': 0, 'cancel_event': False}
+    threading.Thread(target=tool_worker_wrapper, args=(task_id, zip_files_task, input_paths, output_filename)).start()
+    return jsonify({'success': True, 'task_id': task_id})
+
 @app.route('/api/draw-pdf', methods=['POST'])
 def draw_pdf():
     # Helper to allow drawing (overlay image)
@@ -1315,6 +1343,25 @@ def handle_500_error(e):
 def handle_404_error(e):
     return jsonify({'error': 'Not Found'}), 404
 
+def zip_files_task(task_id, input_paths, output_filename):
+    output_path = os.path.join(DOWNLOAD_FOLDER, output_filename)
+    downloads[task_id]['progress'] = 10
+    with zipfile.ZipFile(output_path, 'w') as zf:
+        total = len(input_paths)
+        for i, p in enumerate(input_paths):
+            if downloads[task_id].get('cancel_event'):
+                raise Exception('Cancelled')
+            zf.write(p, os.path.basename(p))
+            downloads[task_id]['progress'] = 10 + int(((i + 1) / max(1, total)) * 80)
+    for p in input_paths:
+        try:
+            if os.path.exists(p):
+                os.remove(p)
+        except:
+            pass
+    downloads[task_id]['progress'] = 95
+    return output_filename
+
 def check_dependencies():
     print("------------------ CHECKING DEPENDENCIES ------------------")
     bin_path = os.path.join(os.getcwd(), 'bin')
@@ -1327,9 +1374,9 @@ def check_dependencies():
     for dep, desc in deps.items():
         if not which(dep):
             missing.append(f"{dep} ({desc})")
-            print(f"❌ {dep} NOT FOUND")
+            print(f"[X] {dep} NOT FOUND")
         else:
-            print(f"✅ {dep} found")
+            print(f"[OK] {dep} found")
             
     # Python Libraries
     python_libs = {

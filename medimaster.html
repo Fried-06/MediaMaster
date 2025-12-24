@@ -52,6 +52,16 @@
                     <option value="sunset">Sunset Glow</option>
                 </select>
             </div>
+            <div class="theme-selector-container" aria-label="Contrôles d'accessibilité">
+                <button id="acc-enable-btn" class="action-btn" aria-label="Activer mode accessibilité visuelle" title="Activer accessibilité visuelle" style="padding: 6px 12px;">
+                    <span>Accessibilité visuelle</span>
+                    <i class="fa-solid fa-universal-access"></i>
+                </button>
+                <button id="acc-disable-btn" class="action-btn" aria-label="Quitter mode accessibilité visuelle" title="Revenir au mode normal" style="padding: 6px 12px;">
+                    <span>Mode normal</span>
+                    <i class="fa-solid fa-eye"></i>
+                </button>
+            </div>
         </div>
     </nav>
 
@@ -196,6 +206,25 @@
                 </div>
             </div>
 
+            <div class="card glass-panel" id="wa-status-card">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                    <i class="fa-brands fa-whatsapp" style="color:#25D366; font-size:1.5rem;"></i>
+                    <h3 style="margin:0;">Statuts WhatsApp (Android)</h3>
+                </div>
+                <p style="color: var(--text-muted);">Sur Android, les statuts sont stockés localement pendant 24h. Ouvrez votre gestionnaire de fichiers et copiez les médias depuis <code>Android/media/com.whatsapp/WhatsApp/Media/.Statuses</code>, puis sélectionnez-les ci‑dessous pour les sauvegarder.</p>
+                <div class="drop-zone" id="wa-status-drop">
+                    <i class="fa-brands fa-whatsapp"></i>
+                    <p>Sélectionnez ou déposez vos statuts ici</p>
+                    <input type="file" accept="image/*,video/*" multiple hidden id="wa-status-input">
+                </div>
+                <div id="wa-files-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;"></div>
+                <button class="action-btn" id="wa-zip-btn">
+                    <span>Télécharger en ZIP</span>
+                    <i class="fa-solid fa-file-zipper"></i>
+                </button>
+                <div class="status-area hidden" id="wa-status-area"></div>
+            </div>
+
             <div class="supported-platforms">
                 <i class="fa-brands fa-tiktok" title="TikTok"></i>
                 <i class="fa-brands fa-instagram" title="Instagram"></i>
@@ -306,7 +335,7 @@
                 </div>
 
                 <button id="convert-image-btn" class="action-btn" style="position: relative;">
-                    <span class="new-badge">NEW</span>
+                    <!-- <span class="new-badge">NEW</span> -->
                     <span>Convertir l'Image</span>
                     <i class="fa-solid fa-wand-magic"></i>
                 </button>
@@ -410,19 +439,7 @@
                         <button id="copy-password" title="Copier"><i class="fa-regular fa-copy"></i></button>
                     </div>
                     
-                    <!-- Password Strength Tester IMPROVED -->
-                    <div id="password-strength-tester" style="margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px;">
-                        <h4 style="margin-bottom: 10px;"><i class="fa-solid fa-stethoscope"></i> Testeur de Robustesse</h4>
-                        <input type="text" id="test-password-input" placeholder="Testez votre propre mot de passe..." style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: white; margin-bottom: 10px;">
-                        
-                        <div class="strength-bar-container" style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden;">
-                            <div class="strength-bar" id="test-strength-bar" style="width: 0%; height: 100%; background: red; transition: width 0.3s, background 0.3s;"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 0.9em;">
-                            <span id="test-strength-text">Force: 0%</span>
-                            <span id="test-crack-time" style="color: var(--text-muted);">Temps de crack: Instantané</span>
-                        </div>
-                    </div>
+                    
 
                     <div class="options-grid">
                         <div class="input-group">
@@ -458,6 +475,17 @@
 
                     <div class="security-notice" style="margin-top: 20px; padding: 10px; background: rgba(0,255,0,0.1); border-radius: 8px; font-size: 0.8rem; text-align: center;">
                         <i class="fa-solid fa-lock"></i> 100% Client-Side. Aucun mot de passe n'est envoyé au serveur.
+                    </div>
+                    <div id="password-strength-tester" style="margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px;">
+                        <h4 style="margin-bottom: 10px;"><i class="fa-solid fa-stethoscope"></i> Testeur de Robustesse</h4>
+                        <input type="text" id="test-password-input" placeholder="Testez votre propre mot de passe..." style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: white; margin-bottom: 10px;">
+                        <div class="strength-bar-container" style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div class="strength-bar" id="test-strength-bar" style="width: 0%; height: 100%; background: red; transition: width 0.3s, background 0.3s;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 0.9em;">
+                            <span id="test-strength-text">Force: 0%</span>
+                            <span id="test-crack-time" style="color: var(--text-muted);">Temps de crack: Instantané</span>
+                        </div>
                     </div>
                 </div>
 
@@ -808,6 +836,64 @@
                 <div class="status-area hidden"></div>
             </div>
 
+            <!-- Image to PDF -->
+            <div id="tpl-img-to-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-image"></i>
+                    <p>Glissez votre image ici (JPG, PNG, etc.)</p>
+                    <input type="file" accept="image/*" hidden>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Convertir en PDF</span> <i class="fa-solid fa-file-pdf"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Word to PDF -->
+            <div id="tpl-word-to-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-file-word"></i>
+                    <p>Glissez votre fichier Word (.docx)</p>
+                    <input type="file" accept=".docx,.doc" hidden>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Convertir en PDF</span> <i class="fa-solid fa-file-pdf"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- PPT to PDF -->
+            <div id="tpl-ppt-to-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-file-powerpoint"></i>
+                    <p>Glissez votre fichier PowerPoint (.pptx)</p>
+                    <input type="file" accept=".pptx,.ppt" hidden>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Convertir en PDF</span> <i class="fa-solid fa-file-pdf"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
+            <!-- Unlock PDF -->
+            <div id="tpl-unlock-pdf">
+                <div class="drop-zone pdf-drop">
+                    <i class="fa-solid fa-unlock"></i>
+                    <p>Glissez votre PDF protégé</p>
+                    <input type="file" accept=".pdf" hidden>
+                </div>
+                <div class="options-grid">
+                    <div class="input-group" style="width: 100%;">
+                        <label>Mot de passe actuel du PDF</label>
+                        <input type="password" placeholder="********" class="password-input">
+                    </div>
+                </div>
+                <button class="action-btn process-btn">
+                    <span>Déverrouiller</span> <i class="fa-solid fa-key"></i>
+                </button>
+                <div class="status-area hidden"></div>
+            </div>
+
             <!-- Add Signature (Interface Interactive) -->
             <div id="tpl-add-signature">
                 <!-- Zone de dépôt initiale -->
@@ -869,18 +955,9 @@
                         <label>Page # (0 = 1ère page)</label>
                         <input type="number" value="0" class="page-num">
                     </div>
-                    <div class="input-group">
-                        <label>Position X</label>
-                        <input type="number" value="400" class="pos-x">
-                    </div>
-                    <div class="input-group">
-                        <label>Position Y</label>
-                        <input type="number" value="50" class="pos-y">
-                    </div>
+                   
                 </div>
-                <button class="action-btn process-btn">
-                    <span>Signer PDF</span> <i class="fa-solid fa-pen-nib"></i>
-                </button>
+               
                 <div class="status-area hidden"></div>
             </div>
 
@@ -915,6 +992,7 @@
                     <div class="pdf-controls glass-panel" style="margin-top: 15px; padding: 10px; display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 600px;">
                         <button class="action-btn small" id="edit-prev-page"><i class="fa-solid fa-chevron-left"></i> Précédent</button>
                         <span style="color: white; font-weight: 500;">Page <span id="edit-page-num">1</span> / <span id="edit-total-pages">1</span></span>
+                        <select id="edit-page-select" style="background: var(--glass-bg); color: var(--text-main); border: 1px solid var(--glass-border); border-radius: 8px; padding: 6px 10px; width: 80px;"></select>
                         <button class="action-btn small" id="edit-next-page">Suivant <i class="fa-solid fa-chevron-right"></i></button>
                     </div>
                 </div>
@@ -1038,6 +1116,24 @@
         </div>
     </div>
     
+    <!-- Accessibility Overlay -->
+    <div id="accessibility-overlay" class="image-modal hidden" role="dialog" aria-modal="true" aria-labelledby="acc-title" aria-describedby="acc-desc">
+        <div class="glass-panel" style="max-width: 700px; padding: 30px; border-radius: 20px; position: relative; text-align: center;">
+            <h2 id="acc-title" style="color: var(--primary); margin-bottom: 15px;">Accessibilité</h2>
+            <p id="acc-desc" style="margin-bottom: 20px; font-size: 1.1rem;">Bienvenue. Appuyez ou cliquez à gauche si vous n’avez pas de handicap visuel. Appuyez ou cliquez à droite si vous êtes en situation de handicap visuel.</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <button id="acc-left-btn" class="action-btn" aria-label="Sans handicap visuel" style="width: 100%;">
+                    <span>Sans handicap visuel</span>
+                    <i class="fa-solid fa-eye"></i>
+                </button>
+                <button id="acc-right-btn" class="action-btn" aria-label="Handicap visuel" style="width: 100%;">
+                    <span>Handicap visuel</span>
+                    <i class="fa-solid fa-universal-access"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Modal Description Mot de Passe PDF -->
     <div id="password-description-modal" class="image-modal hidden">
         <div class="glass-panel" style="max-width: 500px; padding: 30px; border-radius: 20px; position: relative;">
@@ -1061,6 +1157,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
     <script src="js/script.js"></script>
 </body>
 </html>

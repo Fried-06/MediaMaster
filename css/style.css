@@ -643,6 +643,10 @@ select option {
   display: none !important;
 }
 
+#tool-templates {
+  display: none !important;
+}
+
 /* Footer Styles */
 .site-footer {
   margin-top: 4rem;
@@ -818,6 +822,26 @@ select option {
   color: var(--primary);
   text-decoration: none;
   cursor: pointer;
+}
+
+/* Accessibility Mode */
+body.accessibility-visual {
+  --bg-dark: #000000;
+  --card-bg: rgba(0,0,0,0.9);
+  --glass-border: #ffffff;
+  --text-main: #ffffff;
+  --text-muted: #eeeeee;
+  --primary: #00ffff;
+  --secondary: #ff00ff;
+  font-size: 112%;
+}
+body.accessibility-visual * {
+  animation: none !important;
+  transition: none !important;
+}
+body.accessibility-visual :focus-visible {
+  outline: 3px solid #ffdd00 !important;
+  outline-offset: 2px;
 }
 
 /* Tools Section */
@@ -1604,7 +1628,7 @@ p, span, h1, h2, h3, a {
     position: relative;
     overflow: hidden;
 }
-
+/*classe supprimé du frontend*/
 .new-badge {
     position: absolute;
     top: -5px;
@@ -1682,9 +1706,10 @@ p, span, h1, h2, h3, a {
 
 /* Animation du conteneur de fichiers volants */
 .flying-files-animation {
-    position: absolute;
-    right: -100px;
+    position: relative;
+    left:50%;
     top: 50%;
+    bottom:-100px;
     transform: translateY(-50%);
     width: 120px;
     height: 120px;
@@ -1755,12 +1780,16 @@ p, span, h1, h2, h3, a {
 
 /* Conteneur de l'animation de transformation */
 .transform-animation {
-    position: absolute;
+    position: relative;
     right: -100px;
     top: 50%;
+    left:50%;
     transform: translateY(-50%);
-    width: 100px;
-    height: 80px;
+    width: 00px;
+    height: 100px;
+    display:flex;
+    justify-content: center;
+    align-items: center;
 }
 
 /* Onde sonore (barres verticales animées) */
@@ -1816,9 +1845,11 @@ p, span, h1, h2, h3, a {
 
 /* Conteneur du QR code animé */
 .qr-scan-animation {
-    position: absolute;
+    position: relative;
     right: -100px;
     top: 50%;
+    left:50%;
+    bottom:-60px;
     transform: translateY(-50%);
     width: 80px;
     height: 80px;
@@ -1894,9 +1925,11 @@ p, span, h1, h2, h3, a {
 
 /* Conteneur de l'empilement de feuilles */
 .papers-stack-animation {
-    position: absolute;
+  
     right: -100px;
     top: 50%;
+    left:50%;
+    bottom:-20px;
     transform: translateY(-50%);
     width: 70px;
     height: 90px;
@@ -1976,3 +2009,15 @@ p, span, h1, h2, h3, a {
         display: none;
     }
 }
+/ *   S n o w f l a k e s   C S S   * / 
+ 
+ 
+#tool-templates { display: none !important; }
+
+#visual-pdf-drop,
+#draw-pdf-drop,
+#sig-pdf-drop { display: none !important; }
+
+#tool-modal.active #visual-pdf-drop,
+#tool-modal.active #draw-pdf-drop,
+#tool-modal.active #sig-pdf-drop { display: flex !important; }

@@ -64,6 +64,21 @@ if os.path.exists(FFMPEG_BIN):
 # Reviews storage file
 REVIEWS_FILE = os.path.join(os.getcwd(), 'reviews.json')
 
+root_dir = os.path.dirname(os.path.abspath(__file__))
+FAVICON_PNG = os.path.join(root_dir, 'favicon.png')
+if not os.path.exists(FAVICON_PNG):
+    for candidate in ['santa_hat.png', 'maphoto.png', 'success_meme.png']:
+        p = os.path.join(root_dir, candidate)
+        if os.path.exists(p):
+            try:
+                img = Image.open(p)
+                img = img.convert('RGBA')
+                img = img.resize((64, 64), Image.LANCZOS)
+                img.save(FAVICON_PNG, format='PNG')
+                break
+            except Exception:
+                pass
+
 @app.route('/')
 def index():
     return send_from_directory('.', 'medimaster.html')
@@ -75,6 +90,21 @@ def send_css(path):
 @app.route('/js/<path:path>')
 def send_js(path):
     return send_from_directory('js', path)
+
+@app.route('/favicon.png')
+def favicon_png():
+    if os.path.exists(os.path.join(root_dir, 'favicon.png')):
+        return send_from_directory(root_dir, 'favicon.png')
+    for candidate in ['santa_hat.png', 'maphoto.png', 'success_meme.png']:
+        if os.path.exists(os.path.join(root_dir, candidate)):
+            return send_from_directory(root_dir, candidate)
+    return ('', 404)
+
+@app.route('/favicon.ico')
+def favicon_ico():
+    if os.path.exists(os.path.join(root_dir, 'favicon.ico')):
+        return send_from_directory(root_dir, 'favicon.ico')
+    return favicon_png()
 
 @app.route('/<path:filename>')
 def serve_static_root(filename):

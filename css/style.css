@@ -121,7 +121,7 @@ html {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 5%;
+  padding: 1rem 2%;
   background: rgba(15, 23, 42, 0.8);
   backdrop-filter: blur(10px);
   position: sticky;
@@ -161,6 +161,29 @@ html {
   margin-left: 0.5rem;
   border-left: 1px solid var(--glass-border);
   padding-left: 0.5rem;
+}
+
+.navbar .theme-selector-container.accessibility-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.navbar .theme-selector-container.accessibility-controls .action-btn {
+  width: auto;
+  min-width: max-content;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.88rem;
+  border-radius: 12px;
+}
+
+.navbar .theme-selector-container.accessibility-controls .action-btn span {
+  display: inline-block;
+  max-width: 9.5rem;
+  white-space: normal;
+  line-height: 1.15;
+  text-align: center;
 }
 
 .theme-select {
@@ -626,6 +649,14 @@ select option {
       width: 100%;
       text-align: center;
   }
+
+  .theme-selector-container.accessibility-controls .action-btn {
+      width: 100%;
+  }
+
+  .navbar {
+    padding: 0.8rem 3%;
+  }
 }
 
 @media (max-width: 480px) {
@@ -946,6 +977,33 @@ p, span, h1, h2, h3, a {
 }
 
 /* ❄️ Snowflakes Animation */
+.snow-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+  animation: simpleFall linear infinite;
+}
+
+#simple-snow-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+@keyframes simpleFall {
+  from { transform: translateY(-10px); }
+  to { transform: translateY(100vh); }
+}
+
+[data-theme="christmas"] .nav-links {
+  margin-top: 0;
+}
 .snowflakes {
   position: fixed;
   top: 0;
